@@ -25,6 +25,33 @@ data class Song(
     }
 }
 
+@Entity(tableName = "sound_packs")
+data class SoundPack(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val isDefault: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "sound_pads",
+    foreignKeys = [ForeignKey(
+        entity = SoundPack::class,
+        parentColumns = ["id"],
+        childColumns = ["packId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("packId")]
+)
+data class SoundPad(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packId: Long,
+    val note: String,       // "c", "cs", "d", etc.
+    val mode: String,       // "neu", "maj", "min"
+    val filePath: String,   // internal storage path to processed WAV
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface SongDao {
     @Query("SELECT * FROM songs ORDER BY sortOrder ASC, createdAt DESC")
@@ -46,9 +73,46 @@ interface SongDao {
     suspend fun updateAll(songs: List<Song>)
 }
 
-@Database(entities = [Song::class], version = 6)
+@Dao
+interface SoundPackDao {
+    @Query("SELECT * FROM sound_packs ORDER BY isDefault DESC, name ASC")
+    fun getAll(): Flow<List<SoundPack>>
+
+    @Query("SELECT * FROM sound_packs WHERE id = :id")
+    suspend fun getById(id: Long): SoundPack?
+
+    @Query("SELECT * FROM sound_packs WHERE isDefault = 1 LIMIT 1")
+    suspend fun getDefault(): SoundPack?
+
+    @Insert
+    suspend fun insert(pack: SoundPack): Long
+
+    @Update
+    suspend fun update(pack: SoundPack)
+
+    @Delete
+    suspend fun delete(pack: SoundPack)
+
+    @Query("SELECT * FROM sound_pads WHERE packId = :packId")
+    fun getPadsForPack(packId: Long): Flow<List<SoundPad>>
+
+    @Query("SELECT * FROM sound_pads WHERE packId = :packId AND note = :note AND mode = :mode LIMIT 1")
+    suspend fun getPad(packId: Long, note: String, mode: String): SoundPad?
+
+    @Insert
+    suspend fun insertPad(pad: SoundPad): Long
+
+    @Delete
+    suspend fun deletePad(pad: SoundPad)
+
+    @Query("DELETE FROM sound_pads WHERE packId = :packId AND note = :note AND mode = :mode")
+    suspend fun removePad(packId: Long, note: String, mode: String)
+}
+
+@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 8)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
+    abstract fun soundPackDao(): SoundPackDao
 
     companion object {
         @Volatile
@@ -85,13 +149,45 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sound_packs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        isDefault INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sound_pads (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        packId INTEGER NOT NULL,
+                        note TEXT NOT NULL,
+                        mode TEXT NOT NULL,
+                        filePath TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY (packId) REFERENCES sound_packs(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sound_pads_packId ON sound_pads(packId)")
+                db.execSQL("INSERT INTO sound_packs (name, isDefault, createdAt) VALUES ('Atmosfera', 1, ${System.currentTimeMillis()})")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE sound_packs SET name = 'Atmos' WHERE isDefault = 1")
+            }
+        }
+
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "atmosfera_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
                 INSTANCE = instance
                 instance
             }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,14 +22,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.atmosfera.audio.AudioEngine
+import com.example.atmosfera.audio.PadProcessor
 import com.example.atmosfera.data.AppDatabase
+import com.example.atmosfera.data.SoundPack
+import com.example.atmosfera.data.SoundPad
 import com.example.atmosfera.model.ALL_NOTES
 import com.example.atmosfera.model.ClickChannel
 import com.example.atmosfera.model.PadChannel
+import com.example.atmosfera.model.availablePadsSet
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
 import com.example.atmosfera.screens.PlaylistScreen
 import com.example.atmosfera.screens.SettingsScreen
+import com.example.atmosfera.screens.SoundPackListScreen
+import com.example.atmosfera.screens.SoundPackScreen
 import com.example.atmosfera.ui.theme.*
 
 class MainActivity : ComponentActivity() {
@@ -52,11 +59,32 @@ class MainActivity : ComponentActivity() {
         setContent {
             AtmosferaTheme {
                 val navController = rememberNavController()
+                val scope = rememberCoroutineScope()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route ?: "home"
-                val showBottomBar = currentRoute in listOf("home", "playlist", "settings")
+                val showBottomBar = currentRoute in listOf("home", "playlist", "settings", "pack_selector")
                 val db = remember { AppDatabase.getInstance(this@MainActivity) }
                 val songDao = remember { db.songDao() }
+                val soundPackDao = remember { db.soundPackDao() }
+                val padProcessor = remember { PadProcessor(this@MainActivity) }
+                val soundPackDir = remember { java.io.File(filesDir, "soundpacks").also { it.mkdirs() } }
+
+                // Sound pack state
+                val allPacks by soundPackDao.getAll().collectAsState(initial = emptyList())
+                var currentPackId by remember { mutableStateOf(prefs.getLong("currentPackId", -1L)) }
+
+                // Auto-select default pack if none selected
+                LaunchedEffect(allPacks) {
+                    if (currentPackId == -1L && allPacks.isNotEmpty()) {
+                        val defaultPack = allPacks.find { it.isDefault } ?: allPacks.first()
+                        currentPackId = defaultPack.id
+                    }
+                }
+                val currentPack = allPacks.find { it.id == currentPackId }
+                val isDefaultPack = currentPack?.isDefault ?: true
+                val currentPackName = currentPack?.name ?: "Atmos"
+                val currentPads by soundPackDao.getPadsForPack(currentPackId).collectAsState(initial = emptyList())
+                val availablePads = remember(currentPads) { availablePadsSet(currentPads) }
 
                 var playingNote by remember { mutableStateOf<String?>(null) }
                 var playingSongId by remember { mutableStateOf<Long?>(null) }
@@ -163,12 +191,22 @@ class MainActivity : ComponentActivity() {
                                 accents = accents,
                                 beatOn = beatOn,
                                 currentBeat = currentBeat,
+                                currentPackName = currentPackName,
+                                currentPackId = currentPackId,
+                                isDefaultPack = isDefaultPack,
+                                availablePads = availablePads,
+                                allPacks = allPacks,
                                 onPadTap = { note ->
                                     if (playingNote == note.label) {
                                         audio.stopPad { }
                                         playingNote = null
                                     } else {
-                                        audio.startPad(note.resNameForMode(padMode), padChannel)
+                                        if (isDefaultPack) {
+                                            audio.startPad(note.resNameForMode(padMode), padChannel)
+                                        } else {
+                                            val pad = currentPads.find { it.note == note.name && it.mode == padMode }
+                                            pad?.let { audio.startPadFromFile(it.filePath, padChannel) }
+                                        }
                                         playingNote = note.label
                                     }
                                 },
@@ -186,7 +224,17 @@ class MainActivity : ComponentActivity() {
                                     playingNote?.let { noteName ->
                                         val note = ALL_NOTES.find { it.label == noteName }
                                         if (note != null) {
-                                            audio.startPad(note.resNameForMode(mode), padChannel)
+                                            if (isDefaultPack) {
+                                                audio.startPad(note.resNameForMode(mode), padChannel)
+                                            } else {
+                                                val pad = currentPads.find { it.note == note.name && it.mode == mode }
+                                                if (pad != null) {
+                                                    audio.startPadFromFile(pad.filePath, padChannel)
+                                                } else {
+                                                    audio.stopPad { }
+                                                    playingNote = null
+                                                }
+                                            }
                                         }
                                     }
                                 },
@@ -212,7 +260,66 @@ class MainActivity : ComponentActivity() {
                                     liveAccents = accents
                                     audio.currentAccents = accents
                                     prefs.edit().putString("liveAccents", accents.joinToString(",") { if (it) "1" else "0" }).apply()
+                                },
+                                onSelectPack = { packId ->
+                                    if (currentPackId != packId) {
+                                        audio.stopPad { }
+                                        playingNote = null
+                                        currentPackId = packId
+                                        prefs.edit().putLong("currentPackId", packId).apply()
+                                    }
+                                },
+                                onManagePacks = {
+                                    navController.navigate("pack_selector")
                                 }
+                            )
+                        }
+
+                        composable("pack_selector") {
+                            SoundPackListScreen(
+                                packs = allPacks,
+                                currentPackId = currentPackId,
+                                onSelectPack = { packId ->
+                                    if (currentPackId != packId) {
+                                        audio.stopPad { }
+                                        playingNote = null
+                                        currentPackId = packId
+                                        prefs.edit().putLong("currentPackId", packId).apply()
+                                    }
+                                    navController.popBackStack()
+                                },
+                                onCreatePack = {
+                                    navController.navigate("sound_pack/new")
+                                },
+                                onEditPack = { packId ->
+                                    navController.navigate("sound_pack/$packId")
+                                },
+                                onDeletePack = { pack ->
+                                    scope.launch {
+                                        if (currentPackId == pack.id) {
+                                            val defaultPack = allPacks.find { it.isDefault }
+                                            currentPackId = defaultPack?.id ?: -1L
+                                            prefs.edit().putLong("currentPackId", currentPackId).apply()
+                                            audio.stopPad { }
+                                            playingNote = null
+                                        }
+                                        java.io.File(soundPackDir, pack.id.toString()).deleteRecursively()
+                                        soundPackDao.delete(pack)
+                                    }
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable("sound_pack/{packId}") { backStackEntry ->
+                            val packIdStr = backStackEntry.arguments?.getString("packId") ?: return@composable
+                            val existingPackId = if (packIdStr == "new") null else packIdStr.toLongOrNull()
+                            SoundPackScreen(
+                                packId = existingPackId,
+                                soundPackDao = soundPackDao,
+                                padProcessor = padProcessor,
+                                soundPackDir = soundPackDir,
+                                onBack = { navController.popBackStack() }
                             )
                         }
 
@@ -307,6 +414,7 @@ class MainActivity : ComponentActivity() {
                                 clickChannel = clickChannel,
                                 playingNote = playingNote,
                                 clickEnabled = clickEnabled,
+                                currentPackName = currentPackName,
                                 onPadVolumeChange = {
                                     padVolume = it
                                     audio.padTargetVolume = it
@@ -341,6 +449,9 @@ class MainActivity : ComponentActivity() {
                                     padChannel = linkedPad
                                     audio.updatePadPanning(linkedPad)
                                     prefs.edit().putString("clickChannel", channel.name).putString("padChannel", linkedPad.name).apply()
+                                },
+                                onManagePacks = {
+                                    navController.navigate("pack_selector")
                                 }
                             )
                         }

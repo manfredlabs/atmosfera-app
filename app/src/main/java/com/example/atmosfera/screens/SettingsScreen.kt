@@ -23,10 +23,12 @@ fun SettingsScreen(
     clickChannel: ClickChannel,
     playingNote: String?,
     clickEnabled: Boolean,
+    currentPackName: String = "Atmos",
     onPadVolumeChange: (Float) -> Unit,
     onClickVolumeChange: (Float) -> Unit,
     onPadChannelChange: (PadChannel) -> Unit,
-    onClickChannelChange: (ClickChannel) -> Unit
+    onClickChannelChange: (ClickChannel) -> Unit,
+    onManagePacks: () -> Unit = {}
 ) {
         Column(
             modifier = Modifier
@@ -198,6 +200,46 @@ fun SettingsScreen(
                             inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
                         )
                     )
+                }
+            }
+
+            HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
+
+            // ─── SOUND PACKS Section ───
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "SOUND PACKS",
+                    fontSize = 13.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary
+                )
+
+                Surface(
+                    onClick = onManagePacks,
+                    shape = RoundedCornerShape(8.dp),
+                    color = PadIdle,
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentPackName,
+                            fontSize = 14.sp,
+                            fontFamily = SpaceGrotesk,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "▶",
+                            fontSize = 12.sp,
+                            fontFamily = SpaceGrotesk,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
         }

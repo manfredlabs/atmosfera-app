@@ -93,6 +93,20 @@ class AudioEngine(private val context: Context) {
 
     @OptIn(UnstableApi::class)
     fun startPad(rawResName: String, padCh: PadChannel) {
+        val resId = context.resources.getIdentifier(rawResName, "raw", context.packageName)
+        val uri = "android.resource://${context.packageName}/$resId"
+        startPadFromUri(uri, padCh)
+    }
+
+    /** Play a pad from a file path (custom sound packs). */
+    @OptIn(UnstableApi::class)
+    fun startPadFromFile(filePath: String, padCh: PadChannel) {
+        val uri = android.net.Uri.fromFile(java.io.File(filePath)).toString()
+        startPadFromUri(uri, padCh)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun startPadFromUri(uri: String, padCh: PadChannel) {
         // Cancel any pending fade-in
         padHandler.removeCallbacksAndMessages(null)
 
@@ -106,9 +120,6 @@ class AudioEngine(private val context: Context) {
             retiringPlayer = old
             retirePlayer(old)
         }
-
-        val resId = context.resources.getIdentifier(rawResName, "raw", context.packageName)
-        val uri = "android.resource://${context.packageName}/$resId"
 
         val mixer = ChannelMixingAudioProcessor()
         applyPadPanning(mixer, padCh)

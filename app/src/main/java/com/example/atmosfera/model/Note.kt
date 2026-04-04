@@ -1,5 +1,7 @@
 package com.example.atmosfera.model
 
+import com.example.atmosfera.data.SoundPad
+
 data class Note(
     val name: String,
     val label: String,
@@ -31,3 +33,29 @@ val ALL_NOTES = listOf(
     Note("as", "A#", "pad_as_neu", "pad_as_maj", "pad_as_min"),
     Note("b", "B", "pad_b_neu", "pad_b_maj", "pad_b_min"),
 )
+
+val ALL_NOTE_NAMES = ALL_NOTES.map { it.name }
+val ALL_MODES = listOf("neu", "maj", "min")
+
+/**
+ * Resolve which pads are available in a custom sound pack.
+ * Returns a set of "note:mode" keys that have files.
+ */
+fun availablePadsSet(pads: List<SoundPad>): Set<String> =
+    pads.map { "${it.note}:${it.mode}" }.toSet()
+
+/**
+ * Check if a specific note+mode is available in the current pack.
+ * Default pack always has all pads available.
+ */
+fun isPadAvailable(isDefaultPack: Boolean, availablePads: Set<String>, note: String, mode: String): Boolean =
+    isDefaultPack || "${note}:${mode}" in availablePads
+
+/**
+ * Get available modes for a custom pack (modes that have at least 1 pad).
+ */
+fun availableModes(isDefaultPack: Boolean, pads: List<SoundPad>): List<String> {
+    if (isDefaultPack) return ALL_MODES
+    val modes = pads.map { it.mode }.distinct()
+    return ALL_MODES.filter { it in modes }
+}

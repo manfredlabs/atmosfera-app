@@ -65,7 +65,8 @@ fun PlaylistScreen(
     onNavigateToAddSong: () -> Unit,
     onNavigateToEditSong: (Long) -> Unit,
     isLocked: Boolean = false,
-    onToggleLock: () -> Unit = {}
+    onToggleLock: () -> Unit = {},
+    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList()
 ) {
     val songs by songDao.getAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -163,7 +164,8 @@ fun PlaylistScreen(
                                 onPadVolumeChange = onPadVolumeChange,
                                 onClickVolumeChange = onClickVolumeChange,
                                 isLocked = isLocked,
-                                dragModifier = Modifier.draggableHandle()
+                                dragModifier = Modifier.draggableHandle(),
+                                packName = allPacks.find { it.id == song.soundPackId }?.name ?: "Atmos"
                             )
                         }
                     }
@@ -200,7 +202,8 @@ private fun SongItem(
     onPadVolumeChange: (Float) -> Unit,
     onClickVolumeChange: (Float) -> Unit,
     isLocked: Boolean = false,
-    dragModifier: Modifier = Modifier
+    dragModifier: Modifier = Modifier,
+    packName: String = "Atmos"
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val noteLabel = NOTE_LABELS[song.note] ?: song.note.uppercase()
@@ -362,6 +365,17 @@ private fun SongItem(
                                 modifier = Modifier.width(60.dp)
                             )
                         }
+                        Text(
+                            text = "  •  ",
+                            fontSize = 13.sp,
+                            color = TextSecondary.copy(alpha = 0.4f)
+                        )
+                        Text(
+                            text = packName,
+                            fontSize = 13.sp,
+                            fontFamily = SpaceGrotesk,
+                            color = TextSecondary.copy(alpha = 0.6f)
+                        )
                     }
                 }
             }

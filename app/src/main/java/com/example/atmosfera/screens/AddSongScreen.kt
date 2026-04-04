@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -39,11 +40,15 @@ private val NOTE_LABELS = mapOf(
 
 private val NOTE_NAMES = listOf("c", "cs", "d", "ds", "e", "f", "fs", "g", "gs", "a", "as", "b")
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSongScreen(
     songDao: SongDao,
     onBack: () -> Unit,
-    editSongId: Long? = null
+    editSongId: Long? = null,
+    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList(),
+    currentPackId: Long = -1L,
+    soundPackDao: com.example.atmosfera.data.SoundPackDao? = null
 ) {
     val songs by songDao.getAll().collectAsState(initial = null)
     var editSong by remember { mutableStateOf<Song?>(null) }
@@ -58,6 +63,110 @@ fun AddSongScreen(
     var bpm by remember { mutableIntStateOf(90) }
     var accents by remember { mutableStateOf(listOf(true, false, false, false)) }
     var clickEnabled by remember { mutableStateOf(true) }
+    var selectedPackId by remember { mutableStateOf(currentPackId) }
+    var showPackSheet by remember { mutableStateOf(false) }
+
+    val selectedPack = allPacks.find { it.id == selectedPackId }
+    val isDefaultPack = selectedPack?.isDefault == true || selectedPackId == -1L
+
+    val packPads by (soundPackDao?.getPadsForPack(selectedPackId)
+        ?: kotlinx.coroutines.flow.flowOf(emptyList()))
+        .collectAsState(initial = emptyList())
+
+    val availableModes = if (isDefaultPack) listOf("neu", "maj", "min")
+        else packPads.map { it.mode }.distinct()
+    val availableNotes: (String) -> Set<String> = { mode ->
+        if (isDefaultPack) NOTE_NAMES.toSet()
+        else packPads.filter { it.mode == mode }.map { it.note }.toSet()
+    }
+
+    // Reset selection when pack changes and mode/note not available
+    LaunchedEffect(selectedPackId, availableModes) {
+        if (!isDefaultPack && padMode !in availableModes && availableModes.isNotEmpty()) {
+            padMode = availableModes.first()
+        }
+    }
+    LaunchedEffect(selectedPackId, padMode, packPads) {
+        if (!isDefaultPack) {
+            val notes = availableNotes(padMode)
+            if (selectedNote !in notes && notes.isNotEmpty()) {
+                selectedNote = notes.first()
+            }
+        }
+    }
+
+    if (showPackSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPackSheet = false },
+            containerColor = DarkBg,
+            dragHandle = {
+                Box(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        Modifier
+                            .width(32.dp)
+                            .height(4.dp)
+                            .background(TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                    )
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "SOUND PACK",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                allPacks.forEach { pack ->
+                    val isSelected = selectedPackId == pack.id
+                    Surface(
+                        onClick = {
+                            selectedPackId = pack.id
+                            showPackSheet = false
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) LedAmber.copy(alpha = 0.15f) else PadIdle,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) LedAmber else PadBorder.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                        ) {
+                            Text(
+                                text = pack.name,
+                                fontSize = 15.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) LedAmber else TextSecondary
+                            )
+                            if (isSelected) {
+                                Text(
+                                    text = "✓",
+                                    fontSize = 14.sp,
+                                    color = LedAmber,
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
 
     // Load song for edit mode
     LaunchedEffect(editSongId) {
@@ -73,6 +182,7 @@ fun AddSongScreen(
                 bpm = s.bpm
                 accents = s.accentList()
                 clickEnabled = s.clickEnabled
+                selectedPackId = if (s.soundPackId == -1L) currentPackId else s.soundPackId
                 nameInitialized = true
             }
         }
@@ -173,6 +283,45 @@ fun AddSongScreen(
             )
         }
 
+        // ─── Sound Pack ───
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "SOUND PACK",
+                fontSize = 12.sp,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                color = TextSecondary
+            )
+            val selectedPackName = allPacks.find { it.id == selectedPackId }?.name ?: "Atmos"
+            Surface(
+                onClick = { showPackSheet = true },
+                shape = RoundedCornerShape(8.dp),
+                color = PadIdle,
+                border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.CenterStart,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = selectedPackName,
+                        fontSize = 15.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Normal,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "▼",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
+                }
+            }
+        }
+
         // ─── Tom ───
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -188,8 +337,9 @@ fun AddSongScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("neu" to "NEU", "maj" to "MAJ", "min" to "MIN").forEach { (mode, label) ->
                     val isSelected = padMode == mode
+                    val isAvailable = mode in availableModes
                     Surface(
-                        onClick = { padMode = mode },
+                        onClick = { if (isAvailable) padMode = mode },
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSelected) LedAmber.copy(alpha = 0.15f) else PadIdle,
                         border = BorderStroke(
@@ -197,6 +347,7 @@ fun AddSongScreen(
                             if (isSelected) LedAmber else PadBorder.copy(alpha = 0.3f)
                         ),
                         modifier = Modifier.weight(1f).height(48.dp)
+                            .then(if (!isAvailable) Modifier.alpha(0.3f) else Modifier)
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
@@ -216,12 +367,14 @@ fun AddSongScreen(
 
             // Note grid 4x3
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val notesForMode = availableNotes(padMode)
                 NOTE_NAMES.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         row.forEach { note ->
                             val isSelected = selectedNote == note
+                            val isAvailable = note in notesForMode
                             Surface(
-                                onClick = { selectedNote = note },
+                                onClick = { if (isAvailable) selectedNote = note },
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) LedAmber.copy(alpha = 0.15f) else PadIdle,
                                 border = BorderStroke(
@@ -229,6 +382,7 @@ fun AddSongScreen(
                                     if (isSelected) LedAmber else PadBorder.copy(alpha = 0.3f)
                                 ),
                                 modifier = Modifier.weight(1f).height(54.dp)
+                                    .then(if (!isAvailable) Modifier.alpha(0.3f) else Modifier)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -398,7 +552,8 @@ fun AddSongScreen(
                                         bpm = bpm,
                                         accents = Song.accentsToString(accents),
                                         clickEnabled = clickEnabled,
-                                        padMode = padMode
+                                        padMode = padMode,
+                                        soundPackId = selectedPackId
                                     )
                                 )
                             } else {
@@ -410,7 +565,8 @@ fun AddSongScreen(
                                         bpm = bpm,
                                         accents = Song.accentsToString(accents),
                                         clickEnabled = clickEnabled,
-                                        padMode = padMode
+                                        padMode = padMode,
+                                        soundPackId = selectedPackId
                                     )
                                 )
                             }

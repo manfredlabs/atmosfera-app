@@ -12,12 +12,13 @@ data class Song(
     val note: String,       // "c", "cs", "d", etc.
     val isMajor: Boolean,   // legacy — use padMode instead
     val bpm: Int,
-    val accents: String = "1,0,0,0",  // comma-separated: "1,0,0,0" = first beat accented
+    val accents: String = "1,0,0,0",
     val padEnabled: Boolean = true,
     val clickEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
     val sortOrder: Int = 0,
-    val padMode: String = "maj"  // "neu", "maj", "min"
+    val padMode: String = "maj",
+    val soundPackId: Long = -1  // -1 = use current/default pack
 ) {
     fun accentList(): List<Boolean> = accents.split(",").map { it == "1" }
     companion object {
@@ -109,7 +110,7 @@ interface SoundPackDao {
     suspend fun removePad(packId: Long, note: String, mode: String)
 }
 
-@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 8)
+@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 9)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun soundPackDao(): SoundPackDao
@@ -181,13 +182,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN soundPackId INTEGER NOT NULL DEFAULT -1")
+            }
+        }
+
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "atmosfera_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
                 INSTANCE = instance
                 instance
             }

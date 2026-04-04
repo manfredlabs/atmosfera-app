@@ -330,26 +330,44 @@ class MainActivity : ComponentActivity() {
                                 padVolume = padVolume,
                                 clickVolume = clickVolume,
                                 onPlaySong = { song ->
-                                    val note = ALL_NOTES.find { it.name == song.note }
-                                    audio.stopClick()
+                                    scope.launch {
+                                        val note = ALL_NOTES.find { it.name == song.note }
+                                        audio.stopClick()
 
-                                    padMode = song.padMode
-                                    bpm = song.bpm
-                                    accents = song.accentList()
-                                    audio.currentAccents = accents
+                                        padMode = song.padMode
+                                        bpm = song.bpm
+                                        accents = song.accentList()
+                                        audio.currentAccents = accents
 
-                                    if (note != null) {
-                                        audio.startPad(note.resNameForMode(song.padMode), padChannel)
-                                        playingNote = note.label
-                                    }
+                                        val songPack = if (song.soundPackId > 0) song.soundPackId else currentPackId
+                                        if (songPack != currentPackId) {
+                                            currentPackId = songPack
+                                            prefs.edit().putLong("currentPackId", songPack).apply()
+                                        }
 
-                                    playingSongId = song.id
+                                        if (note != null) {
+                                            val defaultPack = allPacks.find { it.isDefault }
+                                            if (songPack == defaultPack?.id || songPack == -1L) {
+                                                audio.startPad(note.resNameForMode(song.padMode), padChannel)
+                                            } else {
+                                                val pad = soundPackDao.getPad(songPack, note.name, song.padMode)
+                                                if (pad != null) {
+                                                    audio.startPadFromFile(pad.filePath, padChannel)
+                                                } else {
+                                                    audio.startPad(note.resNameForMode(song.padMode), padChannel)
+                                                }
+                                            }
+                                            playingNote = note.label
+                                        }
 
-                                    if (song.clickEnabled) {
-                                        clickEnabled = true
-                                        audio.startClick(bpm, clickChannel, clickVolume, accents)
-                                    } else {
-                                        clickEnabled = false
+                                        playingSongId = song.id
+
+                                        if (song.clickEnabled) {
+                                            clickEnabled = true
+                                            audio.startClick(bpm, clickChannel, clickVolume, accents)
+                                        } else {
+                                            clickEnabled = false
+                                        }
                                     }
                                 },
                                 onPauseSong = {
@@ -386,14 +404,18 @@ class MainActivity : ComponentActivity() {
                                         clickEnabled = false
                                     }
                                     playlistLocked = !playlistLocked
-                                }
+                                },
+                                allPacks = allPacks
                             )
                         }
 
                         composable("add_song") {
                             AddSongScreen(
                                 songDao = songDao,
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                allPacks = allPacks,
+                                currentPackId = currentPackId,
+                                soundPackDao = soundPackDao
                             )
                         }
 
@@ -402,7 +424,10 @@ class MainActivity : ComponentActivity() {
                             AddSongScreen(
                                 songDao = songDao,
                                 onBack = { navController.popBackStack() },
-                                editSongId = songId
+                                editSongId = songId,
+                                allPacks = allPacks,
+                                currentPackId = currentPackId,
+                                soundPackDao = soundPackDao
                             )
                         }
 

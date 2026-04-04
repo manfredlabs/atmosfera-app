@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
             .build()
         soundPool = SoundPool.Builder()
             .setMaxStreams(2)
@@ -659,6 +659,11 @@ class MainActivity : ComponentActivity() {
         }
 
         val newPlayer = ExoPlayer.Builder(this, renderersFactory).build().apply {
+            val exoAudioAttrs = androidx.media3.common.AudioAttributes.Builder()
+                .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build()
+            setAudioAttributes(exoAudioAttrs, false)
             setMediaItem(MediaItem.fromUri(uri))
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f

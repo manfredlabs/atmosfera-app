@@ -1,11 +1,14 @@
 package com.example.atmosfera.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,23 +17,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.atmosfera.data.Song
 import com.example.atmosfera.data.SongDao
 import com.example.atmosfera.ui.theme.*
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -195,213 +203,227 @@ private fun SongItem(
     dragModifier: Modifier = Modifier
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showBottomSheet by remember { mutableStateOf(false) }
     val noteLabel = NOTE_LABELS[song.note] ?: song.note.uppercase()
     val chordLabel = when (song.padMode) {
         "min" -> "${noteLabel}m"
         else -> noteLabel
     }
     val scope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
 
-    Column(
+    // Swipe state - use density to convert dp to px
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val revealWidthPx = with(density) { 140.dp.toPx() }
+    val offsetX = remember { Animatable(0f) }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(PadIdle, RoundedCornerShape(12.dp))
             .border(
                 1.dp,
-                if (isPlaying) PadBorder.copy(alpha = 0.5f) else PadBorder.copy(alpha = 0.3f),
+                PadBorder.copy(alpha = 0.3f),
                 RoundedCornerShape(12.dp)
             )
-            .combinedClickable(
-                onClick = { onTap() },
-                onLongClick = {
-                    if (!isLocked) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showBottomSheet = true
-                    }
-                }
-            )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.DragHandle,
-                contentDescription = "Reorder",
-                tint = TextSecondary.copy(alpha = 0.4f),
-                modifier = dragModifier
-                    .size(24.dp)
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
+        // Background action buttons (revealed on swipe)
+        if (offsetX.value < -1f) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(DarkBg),
+                horizontalArrangement = Arrangement.End
             ) {
-                Text(
-                    text = song.name,
-                    fontSize = 17.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                // Edit button
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(70.dp)
+                        .background(PadIdle)
+                        .clickable {
+                            scope.launch { offsetX.animateTo(0f, tween(200)) }
+                            onEdit(song)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = chordLabel,
-                        fontSize = 13.sp,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        color = LedAmber
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = LedAmber,
+                        modifier = Modifier.size(22.dp)
                     )
-                    if (song.clickEnabled) {
-                        Text(
-                            text = "  •  ",
-                            fontSize = 13.sp,
-                            color = TextSecondary.copy(alpha = 0.4f)
-                        )
-                        Text(
-                            text = "${song.bpm} BPM",
-                            fontSize = 13.sp,
-                            fontFamily = SpaceGrotesk,
-                            color = TextSecondary
-                        )
-                    }
+                }
+
+                // Delete button
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(70.dp)
+                        .background(PadIdle)
+                        .clickable {
+                            scope.launch { offsetX.animateTo(0f, tween(200)) }
+                            showDeleteConfirm = true
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }
 
-        // Expanded controls when playing
-        androidx.compose.animation.AnimatedVisibility(visible = isPlaying) {
-            Column(
+        // Foreground card (swipeable)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .background(PadIdle)
+                .then(
+                    if (!isLocked) {
+                        Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        val target = if (offsetX.value < -revealWidthPx / 2) -revealWidthPx else 0f
+                                        offsetX.animateTo(target, tween(200))
+                                    }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    scope.launch {
+                                        val newValue = (offsetX.value + dragAmount).coerceIn(-revealWidthPx, 0f)
+                                        offsetX.snapTo(newValue)
+                                    }
+                                }
+                            )
+                        }
+                    } else Modifier
+                )
+                .clickable { onTap() }
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(start = 8.dp, end = 20.dp, top = 22.dp, bottom = 22.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Icon(
+                    Icons.Default.DragHandle,
+                    contentDescription = "Reorder",
+                    tint = TextSecondary.copy(alpha = 0.4f),
+                    modifier = dragModifier
+                        .size(24.dp)
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "PAD",
-                        fontSize = 11.sp,
+                        text = song.name,
+                        fontSize = 17.sp,
                         fontFamily = SpaceGrotesk,
-                        color = TextSecondary,
-                        modifier = Modifier.width(40.dp)
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     )
-                    Slider(
-                        value = padVolume,
-                        onValueChange = onPadVolumeChange,
-                        modifier = Modifier.weight(1f).height(24.dp),
-                        colors = SliderDefaults.colors(
-                            thumbColor = LedAmber,
-                            activeTrackColor = LedAmberDim,
-                            inactiveTrackColor = PadBorder
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = chordLabel,
+                            fontSize = 13.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            color = LedAmber,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.width(40.dp)
                         )
-                    )
+                        if (song.clickEnabled) {
+                            Text(
+                                text = "  •  ",
+                                fontSize = 13.sp,
+                                color = TextSecondary.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = "${song.bpm} BPM",
+                                fontSize = 13.sp,
+                                fontFamily = SpaceGrotesk,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Start,
+                                modifier = Modifier.width(60.dp)
+                            )
+                        }
+                    }
                 }
+            }
 
-                if (song.clickEnabled) {
+            // Expanded controls when playing
+            AnimatedVisibility(visible = isPlaying) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "CLICK",
+                            text = "PAD",
                             fontSize = 11.sp,
                             fontFamily = SpaceGrotesk,
                             color = TextSecondary,
                             modifier = Modifier.width(40.dp)
                         )
                         Slider(
-                            value = clickVolume,
-                            onValueChange = onClickVolumeChange,
+                            value = padVolume,
+                            onValueChange = onPadVolumeChange,
                             modifier = Modifier.weight(1f).height(24.dp),
                             colors = SliderDefaults.colors(
-                                thumbColor = ClickTeal,
-                                activeTrackColor = ClickTealDim,
+                                thumbColor = LedAmber,
+                                activeTrackColor = LedAmberDim,
                                 inactiveTrackColor = PadBorder
                             )
                         )
                     }
+
+                    if (song.clickEnabled) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "CLICK",
+                                fontSize = 11.sp,
+                                fontFamily = SpaceGrotesk,
+                                color = TextSecondary,
+                                modifier = Modifier.width(40.dp)
+                            )
+                            Slider(
+                                value = clickVolume,
+                                onValueChange = onClickVolumeChange,
+                                modifier = Modifier.weight(1f).height(24.dp),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = ClickTeal,
+                                    activeTrackColor = ClickTealDim,
+                                    inactiveTrackColor = PadBorder
+                                )
+                            )
+                        }
+                    }
                 }
-            }
-        }
-    }
-
-    // Bottom sheet for actions
-    if (showBottomSheet) {
-        val sheetState = rememberModalBottomSheetState()
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            sheetState = sheetState,
-            containerColor = PadIdle,
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(32.dp)
-                        .height(4.dp)
-                        .background(PadBorder.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
-                )
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-            ) {
-                Text(
-                    text = song.name,
-                    fontSize = 16.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-
-                HorizontalDivider(color = PadBorder.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 8.dp))
-
-                Text(
-                    text = "Edit",
-                    fontSize = 16.sp,
-                    fontFamily = SpaceGrotesk,
-                    color = TextPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            showBottomSheet = false
-                            onEdit(song)
-                        }
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
-                )
-
-                Text(
-                    text = "Delete",
-                    fontSize = 16.sp,
-                    fontFamily = SpaceGrotesk,
-                    color = TextPrimary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            showBottomSheet = false
-                            showDeleteConfirm = true
-                        }
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
-                )
             }
         }
     }

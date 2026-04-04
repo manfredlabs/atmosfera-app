@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.atmosfera.app"
+        applicationId = "com.manfredlabs.atmosfera"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -75,11 +75,5 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.reorderable)
     ksp(libs.androidx.room.compiler)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

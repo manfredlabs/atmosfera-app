@@ -23,7 +23,9 @@ import com.example.atmosfera.model.PadChannel
 class AudioEngine(private val context: Context) {
 
     private var player: ExoPlayer? = null
-    private val handler = Handler(Looper.getMainLooper())
+    private val padHandler = Handler(Looper.getMainLooper())
+    private val retireHandler = Handler(Looper.getMainLooper())
+    private val clickHandler = Handler(Looper.getMainLooper())
     var padTargetVolume = 0.5f
 
     private val fadeInMs = 2000L
@@ -44,6 +46,9 @@ class AudioEngine(private val context: Context) {
 
     private var channelMixer: ChannelMixingAudioProcessor? = null
 
+    // Track the single player being faded out (max 1 at a time)
+    private var retiringPlayer: ExoPlayer? = null
+
     /** Current pad volume (for external adjustments) */
     var padVolume: Float
         get() = player?.volume ?: 0f
@@ -62,18 +67,44 @@ class AudioEngine(private val context: Context) {
         accentSoundId = soundPool.load(context, accentResId, 1)
     }
 
+    /** Fade out and release a player. Uses retireHandler (independent of padHandler). */
+    private fun retirePlayer(old: ExoPlayer) {
+        val stepDelay = fadeOutMs / fadeSteps
+        for (i in 1..fadeSteps) {
+            retireHandler.postDelayed({
+                try { old.volume = (1f - i.toFloat() / fadeSteps).let { it * it } * padTargetVolume }
+                catch (_: Exception) {}
+            }, i * stepDelay)
+        }
+        retireHandler.postDelayed({
+            if (retiringPlayer == old) retiringPlayer = null
+            try { old.release() } catch (_: Exception) {}
+        }, fadeOutMs + 50)
+    }
+
+    /** Immediately kill any currently-retiring player */
+    private fun killRetiring() {
+        retireHandler.removeCallbacksAndMessages(null)
+        retiringPlayer?.let {
+            try { it.release() } catch (_: Exception) {}
+        }
+        retiringPlayer = null
+    }
+
     @OptIn(UnstableApi::class)
     fun startPad(rawResName: String, padCh: PadChannel) {
+        // Cancel any pending fade-in
+        padHandler.removeCallbacksAndMessages(null)
+
+        // Kill any previously-retiring player immediately (max 1 fading out at a time)
+        killRetiring()
+
+        // Fade out current player
         val old = player
+        player = null
         if (old != null) {
-            val stepDelay = fadeOutMs / fadeSteps
-            for (i in 1..fadeSteps) {
-                handler.postDelayed({
-                    val progress = 1f - (i.toFloat() / fadeSteps)
-                    old.volume = (progress * progress) * padTargetVolume
-                }, i * stepDelay)
-            }
-            handler.postDelayed({ old.release() }, fadeOutMs + 50)
+            retiringPlayer = old
+            retirePlayer(old)
         }
 
         val resId = context.resources.getIdentifier(rawResName, "raw", context.packageName)
@@ -113,37 +144,39 @@ class AudioEngine(private val context: Context) {
 
         val stepDelay = fadeInMs / fadeSteps
         for (i in 1..fadeSteps) {
-            handler.postDelayed({
-                val progress = i.toFloat() / fadeSteps
-                newPlayer.volume = (progress * progress) * padTargetVolume
+            padHandler.postDelayed({
+                if (player == newPlayer) {
+                    newPlayer.volume = (i.toFloat() / fadeSteps).let { it * it } * padTargetVolume
+                }
             }, i * stepDelay)
         }
     }
 
     fun stopPad(onComplete: (() -> Unit)? = null) {
-        val current = player ?: run {
+        padHandler.removeCallbacksAndMessages(null)
+
+        val current = player
+        player = null
+
+        if (current == null) {
             onComplete?.invoke()
             return
         }
 
-        val stepDelay = fadeOutMs / fadeSteps
-        for (i in 1..fadeSteps) {
-            handler.postDelayed({
-                val progress = 1f - (i.toFloat() / fadeSteps)
-                current.volume = (progress * progress) * padTargetVolume
-            }, i * stepDelay)
-        }
+        // Kill any previous retiring player, then fade this one
+        killRetiring()
+        retiringPlayer = current
+        retirePlayer(current)
 
-        handler.postDelayed({
-            current.release()
-            if (player == current) player = null
-            onComplete?.invoke()
-        }, fadeOutMs + 50)
+        if (onComplete != null) {
+            retireHandler.postDelayed({ onComplete() }, fadeOutMs + 100)
+        }
     }
 
     fun stopPadImmediate() {
-        handler.removeCallbacksAndMessages(null)
-        player?.release()
+        padHandler.removeCallbacksAndMessages(null)
+        killRetiring()
+        player?.let { try { it.release() } catch (_: Exception) {} }
         player = null
     }
 
@@ -169,19 +202,19 @@ class AudioEngine(private val context: Context) {
                 soundPool.play(soundId, leftVol, rightVol, 1, 0, 1f)
                 currentBeat.intValue = beatIndex
                 beatOn.value = true
-                handler.postDelayed({ beatOn.value = false }, beatFlashMs)
+                clickHandler.postDelayed({ beatOn.value = false }, beatFlashMs)
                 beatIndex = (beatIndex + 1) % currentAccents.size
-                handler.postDelayed(this, interval)
+                clickHandler.postDelayed(this, interval)
             }
         }
-        handler.post(clickRunnable!!)
+        clickHandler.post(clickRunnable!!)
     }
 
     fun stopClick() {
         isClickRunning = false
         beatOn.value = false
         currentBeat.intValue = 0
-        clickRunnable?.let { handler.removeCallbacks(it) }
+        clickRunnable?.let { clickHandler.removeCallbacks(it) }
         clickRunnable = null
     }
 

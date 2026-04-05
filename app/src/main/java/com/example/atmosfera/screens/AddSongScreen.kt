@@ -255,7 +255,7 @@ fun AddSongScreen(
             )
             OutlinedTextField(
                 value = nameField,
-                onValueChange = { nameField = it },
+                onValueChange = { if (it.text.length <= 30) nameField = it },
                 placeholder = {
                     Text(
                         "e.g. How Great Is Our God",
@@ -333,33 +333,29 @@ fun AddSongScreen(
                 color = TextSecondary
             )
 
-            // NEU / MAJ / MIN
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // NEU / MAJ / MIN — slide selector
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .background(PadIdle, RoundedCornerShape(8.dp))
+                    .border(1.dp, PadBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 listOf("neu" to "NEU", "maj" to "MAJ", "min" to "MIN").forEach { (mode, label) ->
                     val isSelected = padMode == mode
                     val isAvailable = mode in availableModes
                     Surface(
                         onClick = { if (isAvailable) padMode = mode },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(6.dp),
                         color = if (isSelected) LedAmber.copy(alpha = 0.15f) else PadIdle,
-                        border = BorderStroke(
-                            1.dp,
-                            if (isSelected) LedAmber else PadBorder.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        modifier = Modifier.padding(3.dp).weight(1f).fillMaxHeight()
                             .then(if (!isAvailable) Modifier.alpha(0.3f) else Modifier)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Text(
-                                label,
-                                fontSize = 15.sp,
-                                fontFamily = SpaceGrotesk,
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(label, fontSize = 14.sp, fontFamily = SpaceGrotesk,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) LedAmber else TextSecondary
-                            )
+                                color = if (isSelected) LedAmber else TextSecondary)
                         }
                     }
                 }
@@ -389,7 +385,7 @@ fun AddSongScreen(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     Text(
-                                        (NOTE_LABELS[note] ?: note) + if (padMode == "min") "m" else "",
+                                        NOTE_LABELS[note] ?: note,
                                         fontSize = 15.sp,
                                         fontFamily = SpaceGrotesk,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,

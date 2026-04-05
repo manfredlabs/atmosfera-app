@@ -1,27 +1,36 @@
 package com.example.atmosfera.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.atmosfera.data.SoundPack
 import com.example.atmosfera.ui.theme.*
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,138 +43,223 @@ fun SoundPackListScreen(
     onDeletePack: (SoundPack) -> Unit,
     onBack: () -> Unit
 ) {
-    var showDeleteDialog by remember { mutableStateOf<SoundPack?>(null) }
+    var packToDelete by remember { mutableStateOf<SoundPack?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Header matching AddSongScreen style
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBg)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.align(Alignment.CenterStart)
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = TextSecondary
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = TextSecondary
+                    )
+                }
+                Text(
+                    text = "SOUND PACKS",
+                    fontSize = 22.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 2.sp,
+                    color = TextPrimary
                 )
             }
-            Text(
-                text = "SOUND PACKS",
-                fontSize = 22.sp,
-                fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Light,
-                letterSpacing = 2.sp,
-                color = TextPrimary
-            )
-            IconButton(
-                onClick = { onCreatePack() },
-                modifier = Modifier.align(Alignment.CenterEnd)
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Icon(Icons.Default.Add, "Create Pack", tint = PadActive)
+                items(packs, key = { it.id }) { pack ->
+                    PackItem(
+                        pack = pack,
+                        onClick = { if (!pack.isDefault) onEditPack(pack.id) },
+                        onDelete = { packToDelete = pack }
+                    )
+                }
             }
         }
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxSize()
+        FloatingActionButton(
+            onClick = { onCreatePack() },
+            containerColor = PadActive,
+            contentColor = TextPrimary,
+            shape = CircleShape,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp)
         ) {
-            items(packs) { pack ->
-                val isSelected = pack.id == currentPackId
-                Surface(
-                    onClick = { onSelectPack(pack.id) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) PadActive.copy(alpha = 0.15f) else PadIdle,
-                    border = if (isSelected) {
-                        androidx.compose.foundation.BorderStroke(1.dp, PadActive.copy(alpha = 0.5f))
-                    } else {
-                        androidx.compose.foundation.BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f))
-                    },
-                    modifier = Modifier.fillMaxWidth()
+            Icon(Icons.Default.Add, contentDescription = "Add")
+        }
+    }
+
+    // Delete confirmation bottom sheet
+    packToDelete?.let { pack ->
+        ModalBottomSheet(
+            onDismissRequest = { packToDelete = null },
+            containerColor = PadIdle,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Delete \"${pack.name}\"?",
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "All pads in this pack will be removed.",
+                    fontFamily = SpaceGrotesk,
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    OutlinedButton(
+                        onClick = { packToDelete = null },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, TextSecondary)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = pack.name,
-                                fontFamily = SpaceGrotesk,
-                                fontSize = 16.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) TextPrimary else TextSecondary
-                            )
-                            if (pack.isDefault) {
-                                Text(
-                                    text = "Built-in",
-                                    fontFamily = SpaceGrotesk,
-                                    fontSize = 11.sp,
-                                    color = TextSecondary.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = PadActive,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
-                        if (!pack.isDefault) {
-                            IconButton(onClick = { onEditPack(pack.id) }, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Edit, "Edit", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = { showDeleteDialog = pack }, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.Delete, "Delete", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                            }
-                        }
+                        Text("CANCEL", fontFamily = SpaceGrotesk, fontSize = 13.sp, color = TextSecondary)
+                    }
+                    Button(
+                        onClick = {
+                            onDeletePack(pack)
+                            packToDelete = null
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
+                    ) {
+                        Text("DELETE", fontFamily = SpaceGrotesk, fontSize = 13.sp, color = Color.White)
                     }
                 }
             }
         }
     }
+}
 
-    // Delete confirmation dialog
-    showDeleteDialog?.let { pack ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Pack", fontFamily = SpaceGrotesk, color = TextPrimary) },
-            text = {
-                Text(
-                    "Delete \"${pack.name}\" and all its pads?",
-                    fontFamily = SpaceGrotesk,
-                    color = TextSecondary
+@Composable
+private fun PackItem(
+    pack: SoundPack,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val revealWidthPx = with(density) { 70.dp.toPx() }
+    val offsetX = remember { Animatable(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, PadBorder.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+    ) {
+        // Background delete button (revealed on swipe)
+        if (offsetX.value < -1f && !pack.isDefault) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(DarkBg),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(70.dp)
+                        .background(PadIdle)
+                        .clickable {
+                            scope.launch { offsetX.animateTo(0f, tween(200)) }
+                            onDelete()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        // Foreground card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .background(PadIdle)
+                .then(
+                    if (!pack.isDefault) {
+                        Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        val target = if (offsetX.value < -revealWidthPx / 2) -revealWidthPx else 0f
+                                        offsetX.animateTo(target, tween(200))
+                                    }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    scope.launch {
+                                        val newValue = (offsetX.value + dragAmount).coerceIn(-revealWidthPx, 0f)
+                                        offsetX.snapTo(newValue)
+                                    }
+                                }
+                            )
+                        }
+                    } else Modifier
                 )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeletePack(pack)
-                    showDeleteDialog = null
-                }) {
-                    Text("DELETE", fontFamily = SpaceGrotesk, color = LedAmber)
+                .clickable { onClick() }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = pack.name,
+                        fontFamily = SpaceGrotesk,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = TextPrimary
+                    )
+                    val subtitle = if (pack.isDefault) "Built-in" else pack.description
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            fontFamily = SpaceGrotesk,
+                            fontSize = 11.sp,
+                            color = TextSecondary.copy(alpha = 0.6f)
+                        )
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("CANCEL", fontFamily = SpaceGrotesk, color = TextSecondary)
-                }
-            },
-            containerColor = DarkBg,
-            shape = RoundedCornerShape(16.dp)
-        )
+            }
+        }
     }
 }

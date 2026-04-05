@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -54,7 +56,11 @@ class MainActivity : ComponentActivity() {
         val savedClickVolume = prefs.getFloat("clickVolume", 0.5f)
         val savedPadChannel = PadChannel.entries.find { it.name == prefs.getString("padChannel", "MONO") } ?: PadChannel.MONO
         val savedClickChannel = ClickChannel.entries.find { it.name == prefs.getString("clickChannel", "MONO") } ?: ClickChannel.MONO
+        val savedFadeIn = prefs.getLong("fadeInMs", 2000L)
+        val savedFadeOut = prefs.getLong("fadeOutMs", 1500L)
         audio.padTargetVolume = savedPadVolume
+        audio.fadeInMs = savedFadeIn
+        audio.fadeOutMs = savedFadeOut
 
         setContent {
             AtmosferaTheme {
@@ -105,6 +111,8 @@ class MainActivity : ComponentActivity() {
                 var clickVolume by remember { mutableFloatStateOf(savedClickVolume) }
                 var padChannel by remember { mutableStateOf(savedPadChannel) }
                 var padVolume by remember { mutableFloatStateOf(savedPadVolume) }
+                var fadeInMs by remember { mutableStateOf(savedFadeIn) }
+                var fadeOutMs by remember { mutableStateOf(savedFadeOut) }
                 var playlistLocked by remember { mutableStateOf(false) }
 
                 // Restore live values when navigating to home
@@ -145,9 +153,12 @@ class MainActivity : ComponentActivity() {
                                             onClick = {
                                                 if (currentRoute != route) {
                                                     navController.navigate(route) {
-                                                        popUpTo("home") { saveState = true }
+                                                        popUpTo(navController.graph.startDestinationId) {
+                                                            inclusive = false
+                                                            saveState = false
+                                                        }
                                                         launchSingleTop = true
-                                                        restoreState = true
+                                                        restoreState = false
                                                     }
                                                 }
                                             },
@@ -173,10 +184,47 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
+                    val tabOrder = mapOf("settings" to 0, "home" to 1, "playlist" to 2)
+                    fun routeIndex(route: String?): Int = tabOrder[route] ?: 99
+
                     NavHost(
                         navController = navController,
                         startDestination = "home",
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        enterTransition = {
+                            val fromIdx = routeIndex(initialState.destination.route)
+                            val toIdx = routeIndex(targetState.destination.route)
+                            if (toIdx >= fromIdx) slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
+                            else slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                        },
+                        exitTransition = {
+                            val fromIdx = routeIndex(initialState.destination.route)
+                            val toIdx = routeIndex(targetState.destination.route)
+                            if (toIdx >= fromIdx) slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                            else slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+                        },
+                        popEnterTransition = {
+                            val fromIdx = routeIndex(initialState.destination.route)
+                            val toIdx = routeIndex(targetState.destination.route)
+                            if (fromIdx < 99 && toIdx < 99) {
+                                // Tab-to-tab pop: respect direction
+                                if (toIdx >= fromIdx) slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
+                                else slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                            } else {
+                                // Sub-page pop: always from left
+                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+                            }
+                        },
+                        popExitTransition = {
+                            val fromIdx = routeIndex(initialState.destination.route)
+                            val toIdx = routeIndex(targetState.destination.route)
+                            if (fromIdx < 99 && toIdx < 99) {
+                                if (toIdx >= fromIdx) slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+                                else slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+                            } else {
+                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+                            }
+                        }
                     ) {
                         composable("home") {
                             val beatOn by audio.beatOn
@@ -221,21 +269,9 @@ class MainActivity : ComponentActivity() {
                                     padMode = mode
                                     livePadMode = mode
                                     prefs.edit().putString("livePadMode", mode).apply()
-                                    playingNote?.let { noteName ->
-                                        val note = ALL_NOTES.find { it.label == noteName }
-                                        if (note != null) {
-                                            if (isDefaultPack) {
-                                                audio.startPad(note.resNameForMode(mode), padChannel)
-                                            } else {
-                                                val pad = currentPads.find { it.note == note.name && it.mode == mode }
-                                                if (pad != null) {
-                                                    audio.startPadFromFile(pad.filePath, padChannel)
-                                                } else {
-                                                    audio.stopPad { }
-                                                    playingNote = null
-                                                }
-                                            }
-                                        }
+                                    if (playingNote != null) {
+                                        audio.stopPad { }
+                                        playingNote = null
                                     }
                                 },
                                 onClickToggle = {
@@ -402,6 +438,14 @@ class MainActivity : ComponentActivity() {
                                         playingNote = null
                                         playingSongId = null
                                         clickEnabled = false
+                                    } else {
+                                        // Locking: stop any live pad/click playing
+                                        if (playingNote != null) {
+                                            audio.stopPad { }
+                                            audio.stopClick()
+                                            playingNote = null
+                                            clickEnabled = false
+                                        }
                                     }
                                     playlistLocked = !playlistLocked
                                 },
@@ -474,6 +518,18 @@ class MainActivity : ComponentActivity() {
                                     padChannel = linkedPad
                                     audio.updatePadPanning(linkedPad)
                                     prefs.edit().putString("clickChannel", channel.name).putString("padChannel", linkedPad.name).apply()
+                                },
+                                fadeInMs = fadeInMs,
+                                fadeOutMs = fadeOutMs,
+                                onFadeInChange = {
+                                    fadeInMs = it
+                                    audio.fadeInMs = it
+                                    prefs.edit().putLong("fadeInMs", it).apply()
+                                },
+                                onFadeOutChange = {
+                                    fadeOutMs = it
+                                    audio.fadeOutMs = it
+                                    prefs.edit().putLong("fadeOutMs", it).apply()
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")

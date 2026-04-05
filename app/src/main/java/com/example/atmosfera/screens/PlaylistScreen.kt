@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -164,7 +163,7 @@ fun PlaylistScreen(
                                 onPadVolumeChange = onPadVolumeChange,
                                 onClickVolumeChange = onClickVolumeChange,
                                 isLocked = isLocked,
-                                dragModifier = Modifier.draggableHandle(),
+                                dragModifier = Modifier.longPressDraggableHandle(),
                                 packName = allPacks.find { it.id == song.soundPackId }?.name ?: "Atmos"
                             )
                         }
@@ -207,10 +206,7 @@ private fun SongItem(
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val noteLabel = NOTE_LABELS[song.note] ?: song.note.uppercase()
-    val chordLabel = when (song.padMode) {
-        "min" -> "${noteLabel}m"
-        else -> noteLabel
-    }
+    val modeLabel = song.padMode.uppercase()
     val scope = rememberCoroutineScope()
 
     // Swipe state - use density to convert dp to px
@@ -306,77 +302,52 @@ private fun SongItem(
                     } else Modifier
                 )
                 .clickable { onTap() }
+                .then(dragModifier)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 20.dp, top = 22.dp, bottom = 22.dp),
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Default.DragHandle,
-                    contentDescription = "Reorder",
-                    tint = TextSecondary.copy(alpha = 0.4f),
-                    modifier = dragModifier
-                        .size(24.dp)
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Note badge
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(LedAmber.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
                 ) {
                     Text(
-                        text = song.name,
-                        fontSize = 17.sp,
+                        text = noteLabel,
+                        fontSize = 20.sp,
                         fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        fontWeight = FontWeight.Bold,
+                        color = LedAmber
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = chordLabel,
-                            fontSize = 13.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = LedAmber,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.width(40.dp)
-                        )
-                        if (song.clickEnabled) {
-                            Text(
-                                text = "  •  ",
-                                fontSize = 13.sp,
-                                color = TextSecondary.copy(alpha = 0.4f)
-                            )
-                            Text(
-                                text = "${song.bpm} BPM",
-                                fontSize = 13.sp,
-                                fontFamily = SpaceGrotesk,
-                                color = TextSecondary,
-                                textAlign = TextAlign.Start,
-                                modifier = Modifier.width(60.dp)
-                            )
-                        }
-                        Text(
-                            text = "  •  ",
-                            fontSize = 13.sp,
-                            color = TextSecondary.copy(alpha = 0.4f)
-                        )
-                        Text(
-                            text = packName,
-                            fontSize = 13.sp,
-                            fontFamily = SpaceGrotesk,
-                            color = TextSecondary.copy(alpha = 0.6f)
-                        )
-                    }
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = song.name,
+                        fontSize = 18.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Normal,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    val metaParts = mutableListOf(modeLabel)
+                    if (song.clickEnabled) metaParts.add("${song.bpm} BPM")
+                    metaParts.add(packName)
+                    Text(
+                        text = metaParts.joinToString(" • "),
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f)
+                    )
                 }
             }
 

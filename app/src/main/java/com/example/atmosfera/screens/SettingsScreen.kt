@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.atmosfera.model.ClickChannel
@@ -24,10 +27,14 @@ fun SettingsScreen(
     playingNote: String?,
     clickEnabled: Boolean,
     currentPackName: String = "Atmos",
+    fadeInMs: Long = 2000L,
+    fadeOutMs: Long = 1500L,
     onPadVolumeChange: (Float) -> Unit,
     onClickVolumeChange: (Float) -> Unit,
     onPadChannelChange: (PadChannel) -> Unit,
     onClickChannelChange: (ClickChannel) -> Unit,
+    onFadeInChange: (Long) -> Unit = {},
+    onFadeOutChange: (Long) -> Unit = {},
     onManagePacks: () -> Unit = {}
 ) {
         Column(
@@ -122,6 +129,74 @@ fun SettingsScreen(
                             activeTrackColor = if (playingNote != null) LedAmberDim else PadActive,
                             inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
                         )
+                    )
+                }
+
+                // Fade In
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Fade In",
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary,
+                        modifier = Modifier.width(60.dp)
+                    )
+                    Slider(
+                        value = fadeInMs.toFloat(),
+                        onValueChange = { onFadeInChange(Math.round(it / 500f) * 500L) },
+                        valueRange = 0f..5000f,
+                        steps = 9,
+                        modifier = Modifier.weight(1f).height(28.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = if (playingNote != null) LedAmber else TextSecondary,
+                            activeTrackColor = if (playingNote != null) LedAmberDim else PadActive,
+                            inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
+                        )
+                    )
+                    Text(
+                        text = "${"%.1f".format(fadeInMs / 1000f)}s",
+                        fontSize = 11.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f),
+                        modifier = Modifier.width(36.dp),
+                        textAlign = TextAlign.End
+                    )
+                }
+
+                // Fade Out
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Fade Out",
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary,
+                        modifier = Modifier.width(60.dp)
+                    )
+                    Slider(
+                        value = fadeOutMs.toFloat(),
+                        onValueChange = { onFadeOutChange(Math.round(it / 500f) * 500L) },
+                        valueRange = 0f..5000f,
+                        steps = 9,
+                        modifier = Modifier.weight(1f).height(28.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = if (playingNote != null) LedAmber else TextSecondary,
+                            activeTrackColor = if (playingNote != null) LedAmberDim else PadActive,
+                            inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
+                        )
+                    )
+                    Text(
+                        text = "${"%.1f".format(fadeOutMs / 1000f)}s",
+                        fontSize = 11.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f),
+                        modifier = Modifier.width(36.dp),
+                        textAlign = TextAlign.End
                     )
                 }
             }
@@ -227,17 +302,17 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = currentPackName,
+                            text = "Sound Packs",
                             fontSize = 14.sp,
                             fontFamily = SpaceGrotesk,
                             color = TextPrimary,
                             modifier = Modifier.weight(1f)
                         )
-                        Text(
-                            text = "▶",
-                            fontSize = 12.sp,
-                            fontFamily = SpaceGrotesk,
-                            color = TextSecondary
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Manage",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

@@ -30,6 +30,7 @@ data class Song(
 data class SoundPack(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    val description: String = "",
     val isDefault: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -110,7 +111,7 @@ interface SoundPackDao {
     suspend fun removePad(packId: Long, note: String, mode: String)
 }
 
-@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 9)
+@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 10)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun soundPackDao(): SoundPackDao
@@ -188,13 +189,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sound_packs ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "atmosfera_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
                 INSTANCE = instance
                 instance
             }

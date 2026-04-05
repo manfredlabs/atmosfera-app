@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -59,7 +61,9 @@ fun SoundPackScreen(
     val pads by soundPackDao.getPadsForPack(resolvedId).collectAsState(initial = emptyList())
 
     var nameField by remember { mutableStateOf(TextFieldValue("")) }
+    var descriptionField by remember { mutableStateOf(TextFieldValue("")) }
     var nameInitialized by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
     var padMode by remember { mutableStateOf("maj") }
     var isProcessing by remember { mutableStateOf(false) }
 
@@ -72,7 +76,29 @@ fun SoundPackScreen(
     LaunchedEffect(currentPack) {
         if (!nameInitialized && currentPack != null) {
             nameField = TextFieldValue(currentPack.name)
+            descriptionField = TextFieldValue(currentPack.description)
             nameInitialized = true
+        }
+    }
+
+    // Init name for new packs
+    LaunchedEffect(allPacks) {
+        if (isNewPack && !nameInitialized && allPacks.isNotEmpty()) {
+            val maxNum = allPacks
+                .mapNotNull { it.name.removePrefix("MySoundPack#").toIntOrNull() }
+                .maxOrNull() ?: 0
+            val defaultName = "MySoundPack#${maxNum + 1}"
+            nameField = TextFieldValue(
+                text = defaultName,
+                selection = androidx.compose.ui.text.TextRange(0, defaultName.length)
+            )
+            nameInitialized = true
+        }
+    }
+
+    LaunchedEffect(nameInitialized) {
+        if (nameInitialized && isNewPack) {
+            focusRequester.requestFocus()
         }
     }
 
@@ -89,19 +115,15 @@ fun SoundPackScreen(
     }
 
     val handleBack: () -> Unit = {
-        if (!isNewPack) {
-            scope.launch {
-                currentPack?.let {
-                    if (nameField.text.trim() != it.name && nameField.text.isNotBlank()) {
-                        soundPackDao.update(it.copy(name = nameField.text.trim()))
-                    }
-                }
-            }
-        }
         onBack()
     }
 
     val allFilesSelected = selectedNotes.isNotEmpty() && selectedNotes.all { it in noteFiles }
+    val metadataChanged = currentPack != null && (
+        nameField.text.trim() != currentPack.name ||
+        descriptionField.text.trim() != currentPack.description
+    )
+    val canSave = nameField.text.isNotBlank() && (allFilesSelected || metadataChanged) && !isProcessing
 
     Column(
         modifier = Modifier
@@ -124,10 +146,30 @@ fun SoundPackScreen(
             Text("NAME", fontSize = 12.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = TextSecondary)
             OutlinedTextField(
                 value = nameField,
-                onValueChange = { nameField = it },
-                placeholder = { Text("e.g. Troposphere", fontFamily = SpaceGrotesk, fontSize = 16.sp, color = TextSecondary.copy(alpha = 0.4f)) },
+                onValueChange = { if (it.text.length <= 20) nameField = it },
+                placeholder = { Text("e.g. Warm Pads", fontFamily = SpaceGrotesk, fontSize = 16.sp, color = TextSecondary.copy(alpha = 0.4f)) },
                 singleLine = true,
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, fontFamily = SpaceGrotesk),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
+                    focusedBorderColor = LedAmber, unfocusedBorderColor = PadBorder.copy(alpha = 0.5f),
+                    focusedContainerColor = PadIdle, unfocusedContainerColor = PadIdle,
+                    cursorColor = LedAmber
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+            )
+        }
+
+        // ─── Description ───
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("DESCRIPTION", fontSize = 12.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = TextSecondary)
+            OutlinedTextField(
+                value = descriptionField,
+                onValueChange = { descriptionField = it },
+                placeholder = { Text("e.g. Warm ambient pads", fontFamily = SpaceGrotesk, fontSize = 16.sp, color = TextSecondary.copy(alpha = 0.4f)) },
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, fontFamily = SpaceGrotesk),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
                     focusedBorderColor = LedAmber, unfocusedBorderColor = PadBorder.copy(alpha = 0.5f),
@@ -228,7 +270,7 @@ fun SoundPackScreen(
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Text(
-                                        (NOTE_LABELS[note] ?: note) + if (padMode == "min") "m" else "",
+                                        NOTE_LABELS[note] ?: note,
                                         fontSize = 15.sp, fontFamily = SpaceGrotesk,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         color = when {
@@ -253,7 +295,7 @@ fun SoundPackScreen(
                 val orderedNotes = NOTE_NAMES.filter { it in selectedNotes }
                 orderedNotes.forEach { note ->
                     val fileInfo = noteFiles[note]
-                    val noteLabel = (NOTE_LABELS[note] ?: note) + if (padMode == "min") "m" else ""
+                    val noteLabel = NOTE_LABELS[note] ?: note
 
                     Row(
                         modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -320,44 +362,54 @@ fun SoundPackScreen(
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                 modifier = Modifier.weight(1f).height(50.dp)
             ) {
-                Text("BACK", fontSize = 14.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                Text("CANCEL", fontSize = 14.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             }
             Button(
                 onClick = {
-                    if (!allFilesSelected || nameField.text.isBlank()) return@Button
+                    if (!canSave) return@Button
                     isProcessing = true
                     scope.launch {
                         withContext(Dispatchers.IO) {
                             val actualPackId = createdPackId ?: run {
-                                val id = soundPackDao.insert(SoundPack(name = nameField.text.trim()))
+                                val id = soundPackDao.insert(SoundPack(
+                                    name = nameField.text.trim(),
+                                    description = descriptionField.text.trim()
+                                ))
                                 createdPackId = id
                                 id
                             }
 
                             val pack = soundPackDao.getById(actualPackId)
-                            if (pack != null && nameField.text.trim() != pack.name) {
-                                soundPackDao.update(pack.copy(name = nameField.text.trim()))
+                            if (pack != null) {
+                                val newName = nameField.text.trim()
+                                val newDesc = descriptionField.text.trim()
+                                if (newName != pack.name || newDesc != pack.description) {
+                                    soundPackDao.update(pack.copy(name = newName, description = newDesc))
+                                }
                             }
 
-                            val packDir = File(soundPackDir, actualPackId.toString())
-                            for ((note, filePair) in noteFiles) {
-                                val (uri, _) = filePair
-                                val outputFile = File(packDir, "pad_${note}_${padMode}")
-                                val success = padProcessor.process(uri, outputFile)
-                                if (success) {
-                                    soundPackDao.removePad(actualPackId, note, padMode)
-                                    soundPackDao.insertPad(
-                                        SoundPad(packId = actualPackId, note = note, mode = padMode, filePath = outputFile.absolutePath)
-                                    )
+                            if (allFilesSelected) {
+                                val packDir = File(soundPackDir, actualPackId.toString())
+                                for ((note, filePair) in noteFiles) {
+                                    val (uri, _) = filePair
+                                    val outputFile = File(packDir, "pad_${note}_${padMode}")
+                                    val success = padProcessor.process(uri, outputFile)
+                                    if (success) {
+                                        soundPackDao.removePad(actualPackId, note, padMode)
+                                        soundPackDao.insertPad(
+                                            SoundPad(packId = actualPackId, note = note, mode = padMode, filePath = outputFile.absolutePath)
+                                        )
+                                    }
                                 }
                             }
                         }
                         isProcessing = false
                         selectedNotes = emptySet()
                         noteFiles = emptyMap()
+                        onBack()
                     }
                 },
-                enabled = nameField.text.isNotBlank() && allFilesSelected && !isProcessing,
+                enabled = canSave,
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LedAmber, contentColor = DarkBg,

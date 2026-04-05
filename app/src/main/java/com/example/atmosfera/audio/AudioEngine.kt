@@ -28,8 +28,8 @@ class AudioEngine(private val context: Context) {
     private val clickHandler = Handler(Looper.getMainLooper())
     var padTargetVolume = 0.5f
 
-    private val fadeInMs = 2000L
-    private val fadeOutMs = 1500L
+    var fadeInMs = 2000L
+    var fadeOutMs = 1500L
     private val fadeSteps = 30
 
     private lateinit var soundPool: SoundPool

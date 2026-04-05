@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,7 +79,7 @@ fun HomeScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -89,15 +90,6 @@ fun HomeScreen(
                         letterSpacing = 2.sp,
                         color = TextSecondary
                     )
-                    IconButton(
-                        onClick = {
-                            showPackSheet = false
-                            onManagePacks()
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Settings, "Manage", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -207,7 +199,9 @@ fun HomeScreen(
                         text = currentPackName,
                         fontSize = 12.sp,
                         fontFamily = SpaceGrotesk,
-                        color = TextSecondary
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -258,13 +252,13 @@ fun HomeScreen(
                                 )
                         ) {
                             val displayLabel = when (padMode) {
-                                "min" -> "${note.label}m"
+                                "min" -> note.label
                                 else -> note.label
                             }
                             Text(
                                 text = displayLabel,
                                 fontFamily = SpaceGrotesk,
-                                fontSize = if (padMode == "min") 27.sp else 29.sp,
+                                fontSize = 29.sp,
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isActive) LedAmber else TextOnPad,
                                 textAlign = TextAlign.Center
@@ -277,71 +271,117 @@ fun HomeScreen(
 
         // ─── CLICK controls ───
 
-        // CLICK ON/OFF toggle
-        Surface(
-            onClick = { onClickToggle() },
-            shape = RoundedCornerShape(8.dp),
-            color = if (clickEnabled) ClickTealDim else PadIdle,
-            border = BorderStroke(1.dp, if (clickEnabled) ClickTeal.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.5f)),
-            modifier = Modifier.fillMaxWidth().height(40.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = if (clickEnabled) "CLICK ON" else "CLICK OFF",
-                    fontSize = 14.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    color = if (clickEnabled) ClickTeal else TextSecondary
-                )
+        // CLICK (col 1) + − (col 2) + + (col 3), BPM text overlay
+        val clickBtnHeight = 36.dp
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // 3-column grid — perfectly aligned with pads
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Col 1: CLICK ON/OFF
+                Surface(
+                    onClick = { onClickToggle() },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (clickEnabled) ClickTealDim else PadIdle,
+                    border = BorderStroke(1.dp, if (clickEnabled) ClickTeal.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.3f)),
+                    modifier = Modifier.weight(1f).height(clickBtnHeight)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = if (clickEnabled) "CLICK ON" else "CLICK OFF",
+                            fontSize = 13.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            color = if (clickEnabled) ClickTeal else TextSecondary
+                        )
+                    }
+                }
+
+                // Col 2: − button at start
+                Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
+                    Surface(
+                        onClick = { onBpmChange(-1) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = PadIdle,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.width(48.dp).height(clickBtnHeight)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "−",
+                                fontSize = 20.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                // Col 3: + button at end
+                Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
+                    Surface(
+                        onClick = { onBpmChange(1) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = PadIdle,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.width(48.dp).height(clickBtnHeight)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "+",
+                                fontSize = 20.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // BPM text overlay — centered over cols 2-3
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(2f / 3f)
+                    .height(clickBtnHeight)
+                    .align(Alignment.CenterEnd),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "$bpm",
+                        fontSize = 24.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        color = if (clickEnabled) ClickTeal else TextSecondary
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "BPM",
+                        fontSize = 10.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = if (clickEnabled) ClickTeal.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                }
             }
         }
 
-        // ◀ BPM ▶
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "◀",
-                fontSize = 22.sp,
-                color = TextSecondary,
-                modifier = Modifier.pointerInput(Unit) {
-                    detectTapGestures(onTap = { onBpmChange(-1) })
-                }
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            Text(
-                text = "$bpm",
-                fontSize = 24.sp,
-                fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Bold,
-                color = if (clickEnabled) ClickTeal else TextSecondary,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            Text(
-                text = "▶",
-                fontSize = 22.sp,
-                color = TextSecondary,
-                modifier = Modifier.pointerInput(Unit) {
-                    detectTapGestures(onTap = { onBpmChange(1) })
-                }
-            )
-        }
-
-        // Accent circles
+        // Accent circles (numbered 1-4)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             accents.forEachIndexed { index, isAccent ->
-                if (index > 0) Spacer(modifier = Modifier.width(14.dp))
+                if (index > 0) Spacer(modifier = Modifier.width(10.dp))
                 val isCurrent = clickEnabled && beatOn && currentBeat == index
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(36.dp)
                         .background(
                             color = when {
                                 isCurrent && isAccent -> ClickTeal
@@ -353,19 +393,33 @@ fun HomeScreen(
                             shape = CircleShape
                         )
                         .border(
-                            width = 1.5f.dp,
+                            width = 1.dp,
                             color = when {
                                 isCurrent -> ClickTeal
                                 isAccent && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
                                 isAccent -> PadBorder.copy(alpha = 0.8f)
-                                else -> PadBorder
+                                else -> PadBorder.copy(alpha = 0.3f)
                             },
                             shape = CircleShape
                         )
                         .pointerInput(index) {
                             detectTapGestures(onTap = { onAccentToggle(index) })
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "${index + 1}",
+                        fontSize = 16.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
+                        color = when {
+                            isCurrent -> TextPrimary
+                            isAccent && clickEnabled -> ClickTeal
+                            isAccent -> TextSecondary
+                            else -> TextSecondary.copy(alpha = 0.4f)
                         }
-                )
+                    )
+                }
             }
         }
 

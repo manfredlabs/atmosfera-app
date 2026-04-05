@@ -2,6 +2,7 @@ package com.example.atmosfera
 
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -141,7 +142,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Block back gesture when playlist is locked
-                BackHandler(enabled = currentRoute == "playlist" && playlistLocked) { }
+                BackHandler(enabled = currentRoute == "playlist" && playlistLocked) {
+                    Toast.makeText(this@MainActivity, "Desbloqueie a playlist para sair", Toast.LENGTH_SHORT).show()
+                }
 
                 Scaffold(
                     containerColor = DarkBg,

@@ -377,7 +377,7 @@ class MainActivity : ComponentActivity() {
 
                         composable("playlist") {
                             BackHandler(enabled = playlistLocked) {
-                                Toast.makeText(this@MainActivity, "Desbloqueie a playlist para sair", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, "Unlock playlist to go back", Toast.LENGTH_SHORT).show()
                             }
                             PlaylistScreen(
                                 songDao = songDao,

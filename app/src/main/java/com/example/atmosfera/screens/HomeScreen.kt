@@ -298,30 +298,32 @@ fun HomeScreen(
 
                 // Col 2: − button at start
                 Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
+                    val atMin = bpm <= 30
                     Surface(
-                        onClick = { onBpmChange(-1) },
+                        onClick = { if (!atMin) onBpmChange(-1) },
                         shape = RoundedCornerShape(8.dp),
                         color = PadIdle,
-                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
                         modifier = Modifier.width(48.dp).height(clickBtnHeight)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
                         }
                     }
                 }
 
                 // Col 3: + button at end
                 Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
+                    val atMax = bpm >= 240
                     Surface(
-                        onClick = { onBpmChange(1) },
+                        onClick = { if (!atMax) onBpmChange(1) },
                         shape = RoundedCornerShape(8.dp),
                         color = PadIdle,
-                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
                         modifier = Modifier.width(48.dp).height(clickBtnHeight)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
                         }
                     }
                 }

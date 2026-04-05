@@ -141,11 +141,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Block back gesture when playlist is locked
-                BackHandler(enabled = currentRoute == "playlist" && playlistLocked) {
-                    Toast.makeText(this@MainActivity, "Desbloqueie a playlist para sair", Toast.LENGTH_SHORT).show()
-                }
-
                 Scaffold(
                     containerColor = DarkBg,
                     bottomBar = {
@@ -381,6 +376,9 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("playlist") {
+                            BackHandler(enabled = playlistLocked) {
+                                Toast.makeText(this@MainActivity, "Desbloqueie a playlist para sair", Toast.LENGTH_SHORT).show()
+                            }
                             PlaylistScreen(
                                 songDao = songDao,
                                 playingSongId = playingSongId,

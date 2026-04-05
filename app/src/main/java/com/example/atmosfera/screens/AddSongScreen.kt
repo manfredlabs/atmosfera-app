@@ -1,11 +1,9 @@
 package com.example.atmosfera.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -21,7 +19,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -48,7 +45,12 @@ fun AddSongScreen(
     editSongId: Long? = null,
     allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList(),
     currentPackId: Long = -1L,
-    soundPackDao: com.example.atmosfera.data.SoundPackDao? = null
+    soundPackDao: com.example.atmosfera.data.SoundPackDao? = null,
+    liveBpm: Int = 90,
+    liveAccents: List<Boolean> = listOf(true, false, false, false),
+    liveClickEnabled: Boolean = true,
+    livePadMode: String = "maj",
+    liveNote: String = "c"
 ) {
     val songs by songDao.getAll().collectAsState(initial = null)
     var editSong by remember { mutableStateOf<Song?>(null) }
@@ -58,11 +60,11 @@ fun AddSongScreen(
     var nameField by remember { mutableStateOf(TextFieldValue("")) }
     var nameInitialized by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
-    var selectedNote by remember { mutableStateOf("c") }
-    var padMode by remember { mutableStateOf("maj") }
-    var bpm by remember { mutableIntStateOf(90) }
-    var accents by remember { mutableStateOf(listOf(true, false, false, false)) }
-    var clickEnabled by remember { mutableStateOf(true) }
+    var selectedNote by remember { mutableStateOf(liveNote) }
+    var padMode by remember { mutableStateOf(livePadMode) }
+    var bpm by remember { mutableIntStateOf(liveBpm) }
+    var accents by remember { mutableStateOf(liveAccents) }
+    var clickEnabled by remember { mutableStateOf(liveClickEnabled) }
     var selectedPackId by remember { mutableStateOf(currentPackId) }
     var showPackSheet by remember { mutableStateOf(false) }
 
@@ -410,100 +412,131 @@ fun AddSongScreen(
                 color = TextSecondary
             )
 
-            // CLICK ON/OFF toggle
-            Surface(
-                onClick = { clickEnabled = !clickEnabled },
-                shape = RoundedCornerShape(8.dp),
-                color = if (clickEnabled) ClickTeal.copy(alpha = 0.15f) else PadIdle,
-                border = BorderStroke(
-                    1.dp,
-                    if (clickEnabled) ClickTeal else PadBorder.copy(alpha = 0.3f)
-                ),
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+            // CLICK (col 1) + − (col 2) + + (col 3), BPM overlay
+            val clickBtnHeight = 36.dp
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        if (clickEnabled) "CLICK ON" else "CLICK OFF",
-                        fontSize = 15.sp,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        color = if (clickEnabled) ClickTeal else TextSecondary
-                    )
+                    // Col 1: CLICK ON/OFF
+                    Surface(
+                        onClick = { clickEnabled = !clickEnabled },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (clickEnabled) ClickTeal.copy(alpha = 0.15f) else PadIdle,
+                        border = BorderStroke(
+                            1.dp,
+                            if (clickEnabled) ClickTeal else PadBorder.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.weight(1f).height(clickBtnHeight)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                if (clickEnabled) "CLICK ON" else "CLICK OFF",
+                                fontSize = 13.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = if (clickEnabled) ClickTeal else TextSecondary
+                            )
+                        }
+                    }
+
+                    // Col 2: − button at start
+                    Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
+                        Surface(
+                            onClick = { bpm = (bpm - 1).coerceIn(30, 240) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = PadIdle,
+                            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                            modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            }
+                        }
+                    }
+
+                    // Col 3: + button at end
+                    Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
+                        Surface(
+                            onClick = { bpm = (bpm + 1).coerceIn(30, 240) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = PadIdle,
+                            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                            modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            }
+                        }
+                    }
+                }
+
+                // BPM text overlay centered over cols 2-3
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(2f / 3f)
+                        .height(clickBtnHeight)
+                        .align(Alignment.CenterEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "$bpm",
+                            fontSize = 24.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            color = if (clickEnabled) ClickTeal else TextSecondary
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            "BPM",
+                            fontSize = 10.sp,
+                            fontFamily = SpaceGrotesk,
+                            color = if (clickEnabled) ClickTeal.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
                 }
             }
 
-            // BPM + Accents
-            AnimatedVisibility(visible = clickEnabled) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    // BPM
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "◀",
-                            fontSize = 24.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectTapGestures(
-                                    onTap = { bpm = (bpm - 1).coerceIn(30, 240) },
-                                    onLongPress = { bpm = (bpm - 10).coerceIn(30, 240) }
-                                )
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(24.dp))
-                        Text(
-                            "$bpm",
-                            fontSize = 28.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = ClickTeal
-                        )
-                        Spacer(modifier = Modifier.width(24.dp))
-                        Text(
-                            "▶",
-                            fontSize = 24.sp,
-                            color = TextSecondary,
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectTapGestures(
-                                    onTap = { bpm = (bpm + 1).coerceIn(30, 240) },
-                                    onLongPress = { bpm = (bpm + 10).coerceIn(30, 240) }
-                                )
-                            }
-                        )
-                    }
+            Spacer(modifier = Modifier.height(6.dp))
 
-                    // Accent circles
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        accents.forEachIndexed { index, isAccent ->
-                            if (index > 0) Spacer(modifier = Modifier.width(16.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .background(
-                                        if (isAccent) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
-                                        CircleShape
-                                    )
-                                    .border(
-                                        1.5.dp,
-                                        if (isAccent) ClickTeal else PadBorder.copy(alpha = 0.4f),
-                                        CircleShape
-                                    )
-                                    .clickable {
-                                        accents = accents
-                                            .toMutableList()
-                                            .also { it[index] = !it[index] }
-                                    }
+            // Accent circles (numbered)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                accents.forEachIndexed { index, isAccent ->
+                    if (index > 0) Spacer(modifier = Modifier.width(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                if (isAccent) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
+                                CircleShape
                             )
-                        }
+                            .border(
+                                1.dp,
+                                if (isAccent) ClickTeal else PadBorder.copy(alpha = 0.4f),
+                                CircleShape
+                            )
+                            .clickable {
+                                accents = accents
+                                    .toMutableList()
+                                    .also { it[index] = !it[index] }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${index + 1}",
+                            fontSize = 16.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isAccent) ClickTeal else TextSecondary.copy(alpha = 0.4f)
+                        )
                     }
                 }
             }

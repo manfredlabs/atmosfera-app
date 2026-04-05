@@ -45,7 +45,7 @@ fun SettingsScreen(
         ) {
             // Header
             Box(
-                modifier = Modifier.fillMaxWidth().height(48.dp).padding(bottom = 0.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

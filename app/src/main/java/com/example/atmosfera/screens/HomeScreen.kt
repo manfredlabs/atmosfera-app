@@ -251,12 +251,8 @@ fun HomeScreen(
                                     } else Modifier
                                 )
                         ) {
-                            val displayLabel = when (padMode) {
-                                "min" -> note.label
-                                else -> note.label
-                            }
                             Text(
-                                text = displayLabel,
+                                text = note.label,
                                 fontFamily = SpaceGrotesk,
                                 fontSize = 29.sp,
                                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
@@ -271,10 +267,11 @@ fun HomeScreen(
 
         // ─── CLICK controls ───
 
-        // CLICK (col 1) + − (col 2) + + (col 3), BPM text overlay
+        // ─── CLICK controls ───
         val clickBtnHeight = 36.dp
+
+        // CLICK (col 1) + − (col 2) + + (col 3), BPM text overlay
         Box(modifier = Modifier.fillMaxWidth()) {
-            // 3-column grid — perfectly aligned with pads
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -309,13 +306,7 @@ fun HomeScreen(
                         modifier = Modifier.width(48.dp).height(clickBtnHeight)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "−",
-                                fontSize = 20.sp,
-                                fontFamily = SpaceGrotesk,
-                                fontWeight = FontWeight.Bold,
-                                color = TextSecondary
-                            )
+                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
                 }
@@ -330,19 +321,13 @@ fun HomeScreen(
                         modifier = Modifier.width(48.dp).height(clickBtnHeight)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = "+",
-                                fontSize = 20.sp,
-                                fontFamily = SpaceGrotesk,
-                                fontWeight = FontWeight.Bold,
-                                color = TextSecondary
-                            )
+                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
                 }
             }
 
-            // BPM text overlay — centered over cols 2-3
+            // BPM text overlay centered over cols 2-3
             Box(
                 modifier = Modifier
                     .fillMaxWidth(2f / 3f)
@@ -423,6 +408,5 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
     }
 }

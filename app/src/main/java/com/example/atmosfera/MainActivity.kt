@@ -459,7 +459,14 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() },
                                 allPacks = allPacks,
                                 currentPackId = currentPackId,
-                                soundPackDao = soundPackDao
+                                soundPackDao = soundPackDao,
+                                liveBpm = bpm,
+                                liveAccents = accents,
+                                liveClickEnabled = clickEnabled,
+                                livePadMode = padMode,
+                                liveNote = playingNote?.let { label ->
+                                    ALL_NOTES.find { it.label == label }?.name
+                                } ?: "c"
                             )
                         }
 

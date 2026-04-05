@@ -163,7 +163,7 @@ fun PlaylistScreen(
                                 onPadVolumeChange = onPadVolumeChange,
                                 onClickVolumeChange = onClickVolumeChange,
                                 isLocked = isLocked,
-                                dragModifier = Modifier.longPressDraggableHandle(),
+                                dragModifier = if (isLocked) Modifier else Modifier.longPressDraggableHandle(),
                                 packName = allPacks.find { it.id == song.soundPackId }?.name ?: "Atmos"
                             )
                         }

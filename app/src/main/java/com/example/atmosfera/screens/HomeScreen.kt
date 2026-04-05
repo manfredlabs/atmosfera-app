@@ -9,9 +9,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,40 +57,34 @@ fun HomeScreen(
         ModalBottomSheet(
             onDismissRequest = { showPackSheet = false },
             sheetState = sheetState,
-            containerColor = PadIdle,
+            containerColor = DarkBg,
             dragHandle = {
                 Box(
-                    modifier = Modifier
-                        .padding(top = 12.dp, bottom = 8.dp)
-                        .width(32.dp)
-                        .height(4.dp)
-                        .background(PadBorder, RoundedCornerShape(2.dp))
-                )
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        Modifier
+                            .width(32.dp)
+                            .height(4.dp)
+                            .background(TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                    )
+                }
             }
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "SOUND PACKS",
-                        fontSize = 13.sp,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        color = TextSecondary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
+                Text(
+                    text = "SOUND PACK",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
                 allPacks.forEach { pack ->
                     val isSelected = pack.id == currentPackId
                     Surface(
@@ -101,42 +92,37 @@ fun HomeScreen(
                             onSelectPack(pack.id)
                             showPackSheet = false
                         },
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) PadActive.copy(alpha = 0.15f) else DarkBg,
-                        border = if (isSelected) {
-                            BorderStroke(1.dp, PadActive.copy(alpha = 0.5f))
-                        } else {
-                            BorderStroke(1.dp, PadBorder.copy(alpha = 0.2f))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) LedAmber.copy(alpha = 0.15f) else PadIdle,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) LedAmber else PadBorder.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
                         ) {
                             Text(
                                 text = pack.name,
-                                fontFamily = SpaceGrotesk,
                                 fontSize = 15.sp,
+                                fontFamily = SpaceGrotesk,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) TextPrimary else TextSecondary,
-                                modifier = Modifier.weight(1f)
+                                color = if (isSelected) LedAmber else TextSecondary
                             )
                             if (isSelected) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = PadActive,
-                                    modifier = Modifier.size(18.dp)
+                                Text(
+                                    text = "✓",
+                                    fontSize = 14.sp,
+                                    color = LedAmber,
+                                    modifier = Modifier.align(Alignment.CenterEnd)
                                 )
                             }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

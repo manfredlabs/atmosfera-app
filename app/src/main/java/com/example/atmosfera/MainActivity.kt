@@ -1,6 +1,7 @@
 package com.example.atmosfera
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -122,6 +123,19 @@ class MainActivity : ComponentActivity() {
                         accents = liveAccents
                         padMode = livePadMode
                         audio.currentAccents = liveAccents
+                    }
+                }
+
+                // Keep screen on in Live and locked Playlist
+                val keepScreenOn = currentRoute == "home" || (currentRoute == "playlist" && playlistLocked)
+                DisposableEffect(keepScreenOn) {
+                    if (keepScreenOn) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    onDispose {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     }
                 }
 

@@ -140,10 +140,11 @@ fun HomeScreen(
         val padFromHeight = (availableForPads - 24.dp) / 4  // 4 rows, 3 gaps of 8dp
         val padFromWidth = (maxWidth - 16.dp) / 3            // 3 cols, 2 gaps of 8dp
         val padSize = minOf(padFromWidth, padFromHeight)
+        val gridWidth = padSize * 3 + 16.dp  // 3 pads + 2 gaps of 8dp
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .width(gridWidth)
                 .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)

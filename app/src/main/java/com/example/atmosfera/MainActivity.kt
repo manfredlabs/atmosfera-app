@@ -323,6 +323,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")
+                                },
+                                onBpmSet = { newBpm ->
+                                    bpm = newBpm
+                                    liveBpm = newBpm
+                                    prefs.edit().putInt("liveBpm", newBpm).apply()
+                                    if (clickEnabled) {
+                                        audio.restartClick(newBpm, clickChannel, clickVolume, accents)
+                                    }
                                 }
                             )
                         }

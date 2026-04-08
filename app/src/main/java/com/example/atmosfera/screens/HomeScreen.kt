@@ -48,9 +48,12 @@ fun HomeScreen(
     onAccentToggle: (Int) -> Unit,
     onSelectPack: (Long) -> Unit = {},
     onManagePacks: () -> Unit = {},
+    onBpmSet: (Int) -> Unit = {},
 ) {
     var showPackSheet by remember { mutableStateOf(false) }
+    var showTapTempo by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val tapTempoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Bottom sheet for pack selection
     if (showPackSheet) {
@@ -123,6 +126,144 @@ fun HomeScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Tap Tempo bottom sheet
+    if (showTapTempo) {
+        val tapTimes = remember { mutableStateListOf<Long>() }
+        val tapBpm = remember { mutableIntStateOf(0) }
+
+        ModalBottomSheet(
+            onDismissRequest = { showTapTempo = false },
+            sheetState = tapTempoSheetState,
+            containerColor = DarkBg,
+            dragHandle = {
+                Box(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        Modifier
+                            .width(32.dp)
+                            .height(4.dp)
+                            .background(TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                    )
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "TAP TEMPO",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary
+                )
+
+                // BPM display
+                Text(
+                    text = if (tapBpm.intValue > 0) "${tapBpm.intValue}" else "—",
+                    fontSize = 48.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
+                )
+
+                Text(
+                    text = if (tapBpm.intValue > 0) "BPM" else "Tap the button to start",
+                    fontSize = 13.sp,
+                    fontFamily = SpaceGrotesk,
+                    color = TextSecondary.copy(alpha = 0.6f)
+                )
+
+                // Tap button
+                Surface(
+                    onClick = {
+                        val now = System.currentTimeMillis()
+                        // Reset if gap > 2 seconds
+                        if (tapTimes.isNotEmpty() && now - tapTimes.last() > 2000) {
+                            tapTimes.clear()
+                        }
+                        tapTimes.add(now)
+                        if (tapTimes.size > 8) tapTimes.removeAt(0)
+                        if (tapTimes.size >= 2) {
+                            val intervals = tapTimes.zipWithNext { a, b -> b - a }
+                            val avgMs = intervals.average()
+                            tapBpm.intValue = (60000.0 / avgMs).toInt().coerceIn(30, 240)
+                        }
+                    },
+                    shape = CircleShape,
+                    color = ClickTealDim,
+                    border = BorderStroke(2.dp, ClickTeal.copy(alpha = 0.5f)),
+                    modifier = Modifier.size(100.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = "TAP",
+                            fontSize = 20.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            color = ClickTeal
+                        )
+                    }
+                }
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Reset
+                    Surface(
+                        onClick = {
+                            tapTimes.clear()
+                            tapBpm.intValue = 0
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = PadIdle,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f).height(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text("Reset", fontSize = 14.sp, fontFamily = SpaceGrotesk, color = TextSecondary)
+                        }
+                    }
+
+                    // Apply
+                    Surface(
+                        onClick = {
+                            if (tapBpm.intValue > 0) {
+                                onBpmSet(tapBpm.intValue)
+                                showTapTempo = false
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (tapBpm.intValue > 0) ClickTealDim else PadIdle,
+                        border = BorderStroke(1.dp, if (tapBpm.intValue > 0) ClickTeal.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f).height(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "Apply",
+                                fontSize = 14.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -326,12 +467,15 @@ fun HomeScreen(
                 }
             }
 
-            // BPM text overlay centered over cols 2-3
+            // BPM text overlay centered over cols 2-3 — long press opens tap tempo
             Box(
                 modifier = Modifier
                     .fillMaxWidth(2f / 3f)
                     .height(clickBtnHeight)
-                    .align(Alignment.CenterEnd),
+                    .align(Alignment.CenterEnd)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { showTapTempo = true })
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.Bottom) {

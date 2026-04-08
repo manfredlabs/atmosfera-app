@@ -141,6 +141,7 @@ fun HomeScreen(
         val padFromWidth = (maxWidth - 16.dp) / 3            // 3 cols, 2 gaps of 8dp
         val padSize = minOf(padFromWidth, padFromHeight)
         val gridWidth = padSize * 3 + 16.dp  // 3 pads + 2 gaps of 8dp
+        val padFontSize = (padSize.value * 0.3f).coerceIn(29f, 60f).sp
 
         Column(
             modifier = Modifier
@@ -254,7 +255,7 @@ fun HomeScreen(
                                 Text(
                                     text = note.label,
                                     fontFamily = SpaceGrotesk,
-                                    fontSize = 29.sp,
+                                    fontSize = padFontSize,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                                     color = if (isActive) LedAmber else TextOnPad,
                                     textAlign = TextAlign.Center

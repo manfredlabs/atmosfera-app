@@ -82,11 +82,16 @@ class MainActivity : ComponentActivity() {
                 val allPacks by soundPackDao.getAll().collectAsState(initial = emptyList())
                 var currentPackId by remember { mutableStateOf(prefs.getLong("currentPackId", -1L)) }
 
-                // Ensure default pack exists, create if missing
-                LaunchedEffect(allPacks) {
-                    if (allPacks.none { it.isDefault }) {
+                // Ensure default pack exists (runs once)
+                LaunchedEffect(Unit) {
+                    val existing = soundPackDao.getDefault()
+                    if (existing == null) {
                         soundPackDao.insert(SoundPack(name = "Atmos", isDefault = true))
                     }
+                }
+
+                // Auto-select default pack if none selected
+                LaunchedEffect(allPacks) {
                     if (currentPackId == -1L && allPacks.isNotEmpty()) {
                         val defaultPack = allPacks.find { it.isDefault } ?: allPacks.first()
                         currentPackId = defaultPack.id

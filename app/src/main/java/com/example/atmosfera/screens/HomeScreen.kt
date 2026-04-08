@@ -7,10 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -129,15 +127,25 @@ fun HomeScreen(
         }
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
             .padding(horizontal = 12.dp, vertical = 16.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Calculate pad size to fit both width and height
+        // Non-pad content: top bar ~48dp, click controls ~36dp, accents ~36dp, spacing ~80dp
+        val otherContentHeight = 200.dp
+        val availableForPads = maxHeight - otherContentHeight
+        val padFromHeight = (availableForPads - 24.dp) / 4  // 4 rows, 3 gaps of 8dp
+        val padFromWidth = (maxWidth - 16.dp) / 3            // 3 cols, 2 gaps of 8dp
+        val padSize = minOf(padFromWidth, padFromHeight)
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
         // Top row: NEU/MAJ/MIN (left) + Pack chip (right)
         Row(
             modifier = Modifier
@@ -198,21 +206,19 @@ fun HomeScreen(
 
         // Pad grid 3x4
         val rows = notes.chunked(3)
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val padSize = (maxWidth - 16.dp) / 3
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                rows.forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-                    ) {
-                        row.forEach { note ->
-                            val isActive = playingNote == note.label
-                            val padAvailable = isDefaultPack || "${note.name}:${padMode}" in availablePads
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            rows.forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                ) {
+                    row.forEach { note ->
+                        val isActive = playingNote == note.label
+                        val padAvailable = isDefaultPack || "${note.name}:${padMode}" in availablePads
 
                             val bgColor by animateColorAsState(
                                 targetValue = if (isActive) LedAmber.copy(alpha = 0.15f) else PadIdle,
@@ -255,11 +261,6 @@ fun HomeScreen(
                     }
                 }
             }
-        }
-
-        // ─── CLICK controls ───
-
-        // ─── CLICK controls ───
         val clickBtnHeight = 36.dp
 
         // CLICK (col 1) + − (col 2) + + (col 3), BPM text overlay
@@ -403,4 +404,5 @@ fun HomeScreen(
         }
 
     }
+}
 }

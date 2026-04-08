@@ -142,9 +142,11 @@ fun HomeScreen(
         val padSize = minOf(padFromWidth, padFromHeight)
 
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Top row: NEU/MAJ/MIN (left) + Pack chip (right)
         Row(

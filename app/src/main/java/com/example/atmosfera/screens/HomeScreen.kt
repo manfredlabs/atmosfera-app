@@ -7,8 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,9 +133,10 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
-            .padding(horizontal = 12.dp, vertical = 16.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Top row: NEU/MAJ/MIN (left) + Pack chip (right)
         Row(
@@ -195,56 +198,59 @@ fun HomeScreen(
 
         // Pad grid 3x4
         val rows = notes.chunked(3)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            rows.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    row.forEach { note ->
-                        val isActive = playingNote == note.label
-                        val padAvailable = isDefaultPack || "${note.name}:${padMode}" in availablePads
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val padSize = ((maxWidth - 16.dp) / 3).coerceAtMost(120.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                rows.forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                    ) {
+                        row.forEach { note ->
+                            val isActive = playingNote == note.label
+                            val padAvailable = isDefaultPack || "${note.name}:${padMode}" in availablePads
 
-                        val bgColor by animateColorAsState(
-                            targetValue = if (isActive) LedAmber.copy(alpha = 0.15f) else PadIdle,
-                            animationSpec = tween(200),
-                            label = "padColor"
-                        )
-
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .alpha(if (padAvailable) 1f else 0.3f)
-                                .background(bgColor, RoundedCornerShape(12.dp))
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isActive) LedAmber.copy(alpha = 0.5f) else PadBorder.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .then(
-                                    if (padAvailable) {
-                                        Modifier.pointerInput(note.label, playingNote, padMode) {
-                                            detectTapGestures(
-                                                onTap = { onPadTap(note) },
-                                                onLongPress = { onPadLongPress() }
-                                            )
-                                        }
-                                    } else Modifier
-                                )
-                        ) {
-                            Text(
-                                text = note.label,
-                                fontFamily = SpaceGrotesk,
-                                fontSize = 29.sp,
-                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isActive) LedAmber else TextOnPad,
-                                textAlign = TextAlign.Center
+                            val bgColor by animateColorAsState(
+                                targetValue = if (isActive) LedAmber.copy(alpha = 0.15f) else PadIdle,
+                                animationSpec = tween(200),
+                                label = "padColor"
                             )
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(padSize)
+                                    .alpha(if (padAvailable) 1f else 0.3f)
+                                    .background(bgColor, RoundedCornerShape(12.dp))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (isActive) LedAmber.copy(alpha = 0.5f) else PadBorder.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .then(
+                                        if (padAvailable) {
+                                            Modifier.pointerInput(note.label, playingNote, padMode) {
+                                                detectTapGestures(
+                                                    onTap = { onPadTap(note) },
+                                                    onLongPress = { onPadLongPress() }
+                                                )
+                                            }
+                                        } else Modifier
+                                    )
+                            ) {
+                                Text(
+                                    text = note.label,
+                                    fontFamily = SpaceGrotesk,
+                                    fontSize = 29.sp,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isActive) LedAmber else TextOnPad,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 }

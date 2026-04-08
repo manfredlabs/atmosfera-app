@@ -199,7 +199,7 @@ fun HomeScreen(
         // Pad grid 3x4
         val rows = notes.chunked(3)
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val padSize = ((maxWidth - 16.dp) / 3).coerceAtMost(120.dp)
+            val padSize = (maxWidth - 16.dp) / 3
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth(),

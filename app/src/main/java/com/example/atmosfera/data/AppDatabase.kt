@@ -204,9 +204,20 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .addCallback(object : Callback() {
-                    override fun onCreate(db: SupportSQLiteDatabase) {
-                        super.onCreate(db)
-                        db.execSQL("INSERT INTO sound_packs (name, description, isDefault, createdAt) VALUES ('Atmos', '', 1, ${System.currentTimeMillis()})")
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        // Cleanup: keep only the oldest default pack, remove duplicates
+                        db.execSQL("""
+                            DELETE FROM sound_packs
+                            WHERE isDefault = 1
+                            AND id != (SELECT MIN(id) FROM sound_packs WHERE isDefault = 1)
+                        """)
+                        // Ensure default pack exists
+                        db.execSQL("""
+                            INSERT INTO sound_packs (name, description, isDefault, createdAt)
+                            SELECT 'Atmos', '', 1, ${System.currentTimeMillis()}
+                            WHERE NOT EXISTS (SELECT 1 FROM sound_packs WHERE isDefault = 1)
+                        """)
                     }
                 })
                 .build()

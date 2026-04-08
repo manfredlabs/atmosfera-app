@@ -197,6 +197,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                val prefs = context.applicationContext.getSharedPreferences("atmosfera_settings", android.content.Context.MODE_PRIVATE)
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
@@ -206,18 +207,19 @@ abstract class AppDatabase : RoomDatabase() {
                 .addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)
-                        // Cleanup: keep only the oldest default pack, remove duplicates
-                        db.execSQL("""
-                            DELETE FROM sound_packs
-                            WHERE isDefault = 1
-                            AND id != (SELECT MIN(id) FROM sound_packs WHERE isDefault = 1)
-                        """)
-                        // Ensure default pack exists
-                        db.execSQL("""
-                            INSERT INTO sound_packs (name, description, isDefault, createdAt)
-                            SELECT 'Atmos', '', 1, ${System.currentTimeMillis()}
-                            WHERE NOT EXISTS (SELECT 1 FROM sound_packs WHERE isDefault = 1)
-                        """)
+                        if (!prefs.getBoolean("default_pack_checked", false)) {
+                            db.execSQL("""
+                                DELETE FROM sound_packs
+                                WHERE isDefault = 1
+                                AND id != (SELECT MIN(id) FROM sound_packs WHERE isDefault = 1)
+                            """)
+                            db.execSQL("""
+                                INSERT INTO sound_packs (name, description, isDefault, createdAt)
+                                SELECT 'Atmos', '', 1, ${System.currentTimeMillis()}
+                                WHERE NOT EXISTS (SELECT 1 FROM sound_packs WHERE isDefault = 1)
+                            """)
+                            prefs.edit().putBoolean("default_pack_checked", true).apply()
+                        }
                     }
                 })
                 .build()

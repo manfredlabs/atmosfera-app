@@ -43,7 +43,7 @@ fun LabsScreen(
             shape = RoundedCornerShape(10.dp),
             color = PadIdle,
             border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth().height(80.dp)
+            modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),

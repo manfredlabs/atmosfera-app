@@ -39,7 +39,7 @@ class AudioEngine(private val context: Context) {
     private var clickRunnable: Runnable? = null
     var currentClickVolume = 0.5f
     var currentClickChannel = ClickChannel.MONO
-    var currentAccents = listOf(true, false, false, false)
+    var currentAccents: List<Int> = listOf(1, 0, 0, 0)
 
     val beatOn = mutableStateOf(false)
     val currentBeat = mutableIntStateOf(0)
@@ -191,7 +191,7 @@ class AudioEngine(private val context: Context) {
         player = null
     }
 
-    fun startClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Boolean>) {
+    fun startClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
         isClickRunning = true
         currentClickVolume = volume
         currentClickChannel = channel
@@ -203,14 +203,17 @@ class AudioEngine(private val context: Context) {
         clickRunnable = object : Runnable {
             override fun run() {
                 if (!isClickRunning) return
-                val (leftVol, rightVol) = when (currentClickChannel) {
-                    ClickChannel.LEFT -> currentClickVolume to 0f
-                    ClickChannel.RIGHT -> 0f to currentClickVolume
-                    ClickChannel.MONO -> currentClickVolume to currentClickVolume
+                val beatState = currentAccents[beatIndex]
+                // 2 = muted: advance beat but don't play sound
+                if (beatState != 2) {
+                    val (leftVol, rightVol) = when (currentClickChannel) {
+                        ClickChannel.LEFT -> currentClickVolume to 0f
+                        ClickChannel.RIGHT -> 0f to currentClickVolume
+                        ClickChannel.MONO -> currentClickVolume to currentClickVolume
+                    }
+                    val soundId = if (beatState == 1) accentSoundId else clickSoundId
+                    soundPool.play(soundId, leftVol, rightVol, 1, 0, 1f)
                 }
-                val isAccent = currentAccents[beatIndex]
-                val soundId = if (isAccent) accentSoundId else clickSoundId
-                soundPool.play(soundId, leftVol, rightVol, 1, 0, 1f)
                 currentBeat.intValue = beatIndex
                 beatOn.value = true
                 clickHandler.postDelayed({ beatOn.value = false }, beatFlashMs)
@@ -229,7 +232,7 @@ class AudioEngine(private val context: Context) {
         clickRunnable = null
     }
 
-    fun restartClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Boolean>) {
+    fun restartClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
         stopClick()
         startClick(bpm, channel, volume, accents)
     }

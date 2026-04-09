@@ -20,9 +20,9 @@ data class Song(
     val padMode: String = "maj",
     val soundPackId: Long = -1  // -1 = use current/default pack
 ) {
-    fun accentList(): List<Boolean> = accents.split(",").map { it == "1" }
+    fun accentList(): List<Int> = accents.split(",").map { it.toIntOrNull() ?: if (it == "true") 1 else 0 }
     companion object {
-        fun accentsToString(list: List<Boolean>): String = list.joinToString(",") { if (it) "1" else "0" }
+        fun accentsToString(list: List<Int>): String = list.joinToString(",")
     }
 }
 

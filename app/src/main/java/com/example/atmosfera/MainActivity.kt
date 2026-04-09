@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                 // Live screen state (persisted)
                 var liveBpm by remember { mutableIntStateOf(prefs.getInt("liveBpm", 90)) }
                 var liveAccents by remember { mutableStateOf(
-                    prefs.getString("liveAccents", "1,0,0,0")!!.split(",").map { it == "1" }
+                    prefs.getString("liveAccents", "1,0,0,0")!!.split(",").map { it.toInt() }
                 ) }
                 var livePadMode by remember { mutableStateOf(prefs.getString("livePadMode", "maj")!!) }
 
@@ -314,10 +314,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onAccentToggle = { index ->
-                                    accents = accents.toMutableList().also { it[index] = !it[index] }
+                                    accents = accents.toMutableList().also {
+                                        // Cycle: 0 (normal) → 1 (accent) → 2 (muted) → 0
+                                        it[index] = (it[index] + 1) % 3
+                                    }
                                     liveAccents = accents
                                     audio.currentAccents = accents
-                                    prefs.edit().putString("liveAccents", accents.joinToString(",") { if (it) "1" else "0" }).apply()
+                                    prefs.edit().putString("liveAccents", accents.joinToString(",")).apply()
                                 },
                                 onSelectPack = { packId ->
                                     if (currentPackId != packId) {
@@ -580,11 +583,11 @@ class MainActivity : ComponentActivity() {
                                     timeSignature = sig
                                     prefs.edit().putString("timeSignature", sig).apply()
                                     val beats = sig.substringBefore("/").toInt()
-                                    val newAccents = List(beats) { it == 0 }
+                                    val newAccents = List(beats) { if (it == 0) 1 else 0 }
                                     accents = newAccents
                                     liveAccents = newAccents
                                     audio.currentAccents = newAccents
-                                    prefs.edit().putString("liveAccents", newAccents.joinToString(",") { if (it) "1" else "0" }).apply()
+                                    prefs.edit().putString("liveAccents", newAccents.joinToString(",")).apply()
                                     if (clickEnabled) {
                                         audio.restartClick(bpm, clickChannel, clickVolume, newAccents)
                                     }

@@ -32,7 +32,7 @@ fun HomeScreen(
     padMode: String,
     clickEnabled: Boolean,
     bpm: Int,
-    accents: List<Boolean>,
+    accents: List<Int>,
     beatOn: Boolean,
     currentBeat: Int,
     currentPackName: String = "Atmos",
@@ -501,20 +501,24 @@ fun HomeScreen(
             }
         }
 
-        // Accent circles (numbered 1-4)
+        // Accent circles
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            accents.forEachIndexed { index, isAccent ->
+            accents.forEachIndexed { index, beatState ->
                 if (index > 0) Spacer(modifier = Modifier.width(10.dp))
+                val isAccent = beatState == 1
+                val isMuted = beatState == 2
                 val isCurrent = clickEnabled && beatOn && currentBeat == index
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .background(
                             color = when {
+                                isMuted && isCurrent -> ClickTeal.copy(alpha = 0.3f)
+                                isMuted -> PadIdle.copy(alpha = 0.5f)
                                 isCurrent && isAccent -> ClickTeal
                                 isCurrent -> ClickTeal.copy(alpha = 0.7f)
                                 isAccent && clickEnabled -> ClickTealDim
@@ -526,6 +530,7 @@ fun HomeScreen(
                         .border(
                             width = 1.dp,
                             color = when {
+                                isMuted -> PadBorder.copy(alpha = 0.15f)
                                 isCurrent -> ClickTeal
                                 isAccent && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
                                 isAccent -> PadBorder.copy(alpha = 0.8f)
@@ -539,11 +544,12 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${index + 1}",
+                        text = if (isMuted) "×" else "${index + 1}",
                         fontSize = 16.sp,
                         fontFamily = SpaceGrotesk,
                         fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
                         color = when {
+                            isMuted -> TextSecondary.copy(alpha = 0.2f)
                             isCurrent -> TextPrimary
                             isAccent && clickEnabled -> ClickTeal
                             isAccent -> TextSecondary

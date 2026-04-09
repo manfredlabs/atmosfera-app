@@ -47,7 +47,7 @@ fun AddSongScreen(
     currentPackId: Long = -1L,
     soundPackDao: com.example.atmosfera.data.SoundPackDao? = null,
     liveBpm: Int = 90,
-    liveAccents: List<Boolean> = listOf(true, false, false, false),
+    liveAccents: List<Int> = listOf(1, 0, 0, 0),
     liveClickEnabled: Boolean = true,
     livePadMode: String = "maj",
     liveNote: String = "c"
@@ -511,33 +511,47 @@ fun AddSongScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                accents.forEachIndexed { index, isAccent ->
+                accents.forEachIndexed { index, beatState ->
                     if (index > 0) Spacer(modifier = Modifier.width(10.dp))
+                    val isAccent = beatState == 1
+                    val isMuted = beatState == 2
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .background(
-                                if (isAccent) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
+                                when {
+                                    isMuted -> Color.Transparent
+                                    isAccent -> ClickTeal.copy(alpha = 0.2f)
+                                    else -> Color.Transparent
+                                },
                                 CircleShape
                             )
                             .border(
                                 1.dp,
-                                if (isAccent) ClickTeal else PadBorder.copy(alpha = 0.4f),
+                                when {
+                                    isMuted -> PadBorder.copy(alpha = 0.15f)
+                                    isAccent -> ClickTeal
+                                    else -> PadBorder.copy(alpha = 0.4f)
+                                },
                                 CircleShape
                             )
                             .clickable {
                                 accents = accents
                                     .toMutableList()
-                                    .also { it[index] = !it[index] }
+                                    .also { it[index] = (it[index] + 1) % 3 }
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "${index + 1}",
+                            text = if (isMuted) "×" else "${index + 1}",
                             fontSize = 16.sp,
                             fontFamily = SpaceGrotesk,
                             fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isAccent) ClickTeal else TextSecondary.copy(alpha = 0.4f)
+                            color = when {
+                                isMuted -> TextSecondary.copy(alpha = 0.2f)
+                                isAccent -> ClickTeal
+                                else -> TextSecondary.copy(alpha = 0.4f)
+                            }
                         )
                     }
                 }

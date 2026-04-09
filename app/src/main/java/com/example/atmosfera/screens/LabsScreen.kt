@@ -28,14 +28,20 @@ fun LabsScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "LABS",
-            fontSize = 13.sp,
-            fontFamily = SpaceGrotesk,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-            color = TextSecondary
-        )
+        // Header
+        Box(
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "LABS",
+                fontSize = 13.sp,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 6.sp,
+                color = TextSecondary
+            )
+        }
 
         // Tap Tempo card
         Surface(

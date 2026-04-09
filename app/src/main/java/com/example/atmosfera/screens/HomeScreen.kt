@@ -470,21 +470,21 @@ fun HomeScreen(
                 }
             }
 
-            // BPM text overlay centered over cols 2-3 — long press opens tap tempo if enabled
+            // BPM text overlay centered over cols 2-3
             Box(
                 modifier = Modifier
                     .fillMaxWidth(2f / 3f)
                     .height(clickBtnHeight)
-                    .align(Alignment.CenterEnd)
-                    .then(
-                        if (tapTempoLongPressEnabled) Modifier.combinedClickable(
-                            onClick = {},
-                            onLongClick = { showTapTempo = true }
-                        ) else Modifier
-                    ),
+                    .align(Alignment.CenterEnd),
                 contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.Bottom) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    modifier = if (tapTempoLongPressEnabled) Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = { showTapTempo = true }
+                    ) else Modifier
+                ) {
                     Text(
                         text = "$bpm",
                         fontSize = 24.sp,

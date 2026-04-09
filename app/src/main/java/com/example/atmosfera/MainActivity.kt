@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
                 var playingNote by remember { mutableStateOf<String?>(null) }
                 var playingSongId by remember { mutableStateOf<Long?>(null) }
+                var playingMixId by remember { mutableStateOf<Long?>(null) }
 
                 // Live screen state (persisted)
                 var liveBpm by remember { mutableIntStateOf(prefs.getInt("liveBpm", 90)) }
@@ -456,6 +457,10 @@ class MainActivity : ComponentActivity() {
                                 clickVolume = clickVolume,
                                 onPlaySong = { song ->
                                     scope.launch {
+                                        // Stop mix if playing
+                                        mixAudio.stopAll()
+                                        playingMixId = null
+
                                         val note = ALL_NOTES.find { it.name == song.note }
                                         audio.stopClick()
 
@@ -524,21 +529,49 @@ class MainActivity : ComponentActivity() {
                                     if (playlistLocked) {
                                         audio.stopPad { }
                                         audio.stopClick()
+                                        mixAudio.stopAll()
                                         playingNote = null
                                         playingSongId = null
+                                        playingMixId = null
                                         clickEnabled = false
                                     } else {
-                                        // Locking: stop any live pad/click playing
                                         if (playingNote != null) {
                                             audio.stopPad { }
                                             audio.stopClick()
                                             playingNote = null
                                             clickEnabled = false
                                         }
+                                        mixAudio.stopAll()
+                                        playingMixId = null
                                     }
                                     playlistLocked = !playlistLocked
                                 },
-                                allPacks = allPacks
+                                allPacks = allPacks,
+                                mixProjectDao = mixProjectDao,
+                                playingMixId = playingMixId,
+                                onPlayMix = { project, tracks ->
+                                    // Stop any song playback first
+                                    audio.stopPad { }
+                                    audio.stopClick()
+                                    playingNote = null
+                                    playingSongId = null
+                                    clickEnabled = false
+                                    // Start mix
+                                    mixAudio.stopAll()
+                                    mixAudio.startAll(tracks)
+                                    playingMixId = project.id
+                                },
+                                onPauseMix = {
+                                    mixAudio.stopAll()
+                                    playingMixId = null
+                                },
+                                mixTrackPlayingState = mixAudio.trackPlaying,
+                                onMixTrackVolumeChange = { track, vol ->
+                                    mixAudio.setTrackVolume(track.id, vol)
+                                    scope.launch { mixProjectDao.updateTrack(track.copy(volume = vol)) }
+                                },
+                                onStopMixTrack = { trackId -> mixAudio.stopTrack(trackId) },
+                                onStartMixTrack = { track -> mixAudio.startTrack(track) }
                             )
                         }
 

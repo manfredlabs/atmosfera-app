@@ -17,10 +17,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Piano
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.atmosfera.data.Song
 import com.example.atmosfera.data.SongDao
+import com.example.atmosfera.data.MixProject
+import com.example.atmosfera.data.MixProjectDao
+import com.example.atmosfera.data.MixTrack
 import com.example.atmosfera.ui.theme.*
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -51,6 +59,17 @@ private val NOTE_LABELS = mapOf(
 
 private val NOTE_NAMES = listOf("c", "cs", "d", "ds", "e", "f", "fs", "g", "gs", "a", "as", "b")
 
+/** Unified wrapper so Songs and MixProjects share one sorted list. */
+sealed class PlaylistItem(val sortKey: Int, val createdAt: Long) {
+    abstract val uid: String
+    class SongItem(val song: Song) : PlaylistItem(song.sortOrder, song.createdAt) {
+        override val uid = "song_${song.id}"
+    }
+    class MixItem(val project: MixProject) : PlaylistItem(project.sortOrder, project.createdAt) {
+        override val uid = "mix_${project.id}"
+    }
+}
+
 @Composable
 fun PlaylistScreen(
     songDao: SongDao,
@@ -65,10 +84,27 @@ fun PlaylistScreen(
     onNavigateToEditSong: (Long) -> Unit,
     isLocked: Boolean = false,
     onToggleLock: () -> Unit = {},
-    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList()
+    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList(),
+    // Mix Studio integration
+    mixProjectDao: MixProjectDao? = null,
+    playingMixId: Long? = null,
+    onPlayMix: (MixProject, List<MixTrack>) -> Unit = { _, _ -> },
+    onPauseMix: () -> Unit = {},
+    mixTrackPlayingState: Map<Long, Boolean> = emptyMap(),
+    onMixTrackVolumeChange: (MixTrack, Float) -> Unit = { _, _ -> },
+    onStopMixTrack: (Long) -> Unit = {},
+    onStartMixTrack: (MixTrack) -> Unit = {}
 ) {
     val songs by songDao.getAll().collectAsState(initial = emptyList())
+    val mixProjects by mixProjectDao?.getAll()?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList()) }
     val scope = rememberCoroutineScope()
+
+    // Build unified list
+    val items = remember(songs, mixProjects) {
+        val songItems = songs.map { PlaylistItem.SongItem(it) }
+        val mixItems = mixProjects.map { PlaylistItem.MixItem(it) }
+        (songItems + mixItems).sortedWith(compareBy<PlaylistItem> { it.sortKey }.thenByDescending { it.createdAt })
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -101,7 +137,7 @@ fun PlaylistScreen(
                 }
             }
 
-            if (songs.isEmpty()) {
+            if (items.isEmpty()) {
                 // Empty state
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -124,48 +160,59 @@ fun PlaylistScreen(
                     }
                 }
             } else {
-                var localSongs by remember(songs) { mutableStateOf(songs) }
                 val lazyListState = rememberLazyListState()
-                val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-                    localSongs = localSongs.toMutableList().apply {
-                        add(to.index, removeAt(from.index))
-                    }
-                }
-
-                // Save order when drag ends
-                LaunchedEffect(localSongs) {
-                    if (localSongs != songs && localSongs.size == songs.size) {
-                        val updated = localSongs.mapIndexed { index, song ->
-                            song.copy(sortOrder = index)
-                        }
-                        songDao.updateAll(updated)
-                    }
-                }
 
                 LazyColumn(
                     state = lazyListState,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(localSongs, key = { it.id }) { song ->
-                        ReorderableItem(reorderableLazyListState, key = song.id) { isDragging ->
-                            val isPlaying = playingSongId == song.id
-                            SongItem(
-                                song = song,
-                                isPlaying = isPlaying,
-                                padVolume = padVolume,
-                                clickVolume = clickVolume,
-                                onTap = {
-                                    if (!isLocked) return@SongItem
-                                    if (isPlaying) onPauseSong() else onPlaySong(song)
-                                },
-                                onDelete = { scope.launch { songDao.delete(song) } },
-                                onEdit = { s -> onNavigateToEditSong(s.id) },
-                                onPadVolumeChange = onPadVolumeChange,
-                                onClickVolumeChange = onClickVolumeChange,
-                                isLocked = isLocked,
-                                dragModifier = if (isLocked) Modifier else Modifier.longPressDraggableHandle(),
-                                packName = allPacks.find { it.id == song.soundPackId }?.name ?: "Atmos"
-                            )
+                    items(items, key = { it.uid }) { item ->
+                        when (item) {
+                            is PlaylistItem.SongItem -> {
+                                val song = item.song
+                                val isPlaying = playingSongId == song.id
+                                SongCard(
+                                    song = song,
+                                    isPlaying = isPlaying,
+                                    padVolume = padVolume,
+                                    clickVolume = clickVolume,
+                                    onTap = {
+                                        if (!isLocked) return@SongCard
+                                        if (isPlaying) onPauseSong() else onPlaySong(song)
+                                    },
+                                    onDelete = { scope.launch { songDao.delete(song) } },
+                                    onEdit = { s -> onNavigateToEditSong(s.id) },
+                                    onPadVolumeChange = onPadVolumeChange,
+                                    onClickVolumeChange = onClickVolumeChange,
+                                    isLocked = isLocked,
+                                    packName = allPacks.find { it.id == song.soundPackId }?.name ?: "Atmos"
+                                )
+                            }
+                            is PlaylistItem.MixItem -> {
+                                val project = item.project
+                                val isPlaying = playingMixId == project.id
+                                MixProjectCard(
+                                    project = project,
+                                    mixDao = mixProjectDao!!,
+                                    isPlaying = isPlaying,
+                                    onTap = {
+                                        if (!isLocked) return@MixProjectCard
+                                        if (isPlaying) onPauseMix()
+                                        else {
+                                            scope.launch {
+                                                val tracks = mixProjectDao.getTracksForProjectOnce(project.id)
+                                                onPlayMix(project, tracks)
+                                            }
+                                        }
+                                    },
+                                    onDelete = { scope.launch { mixProjectDao.delete(project) } },
+                                    isLocked = isLocked,
+                                    trackPlayingState = mixTrackPlayingState,
+                                    onTrackVolumeChange = onMixTrackVolumeChange,
+                                    onStopTrack = onStopMixTrack,
+                                    onStartTrack = onStartMixTrack
+                                )
+                            }
                         }
                     }
                 }
@@ -190,7 +237,7 @@ fun PlaylistScreen(
 }
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun SongItem(
+private fun SongCard(
     song: Song,
     isPlaying: Boolean,
     padVolume: Float,
@@ -201,7 +248,6 @@ private fun SongItem(
     onPadVolumeChange: (Float) -> Unit,
     onClickVolumeChange: (Float) -> Unit,
     isLocked: Boolean = false,
-    dragModifier: Modifier = Modifier,
     packName: String = "Atmos"
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -302,7 +348,6 @@ private fun SongItem(
                     } else Modifier
                 )
                 .clickable { onTap() }
-                .then(dragModifier)
         ) {
             Row(
                 modifier = Modifier
@@ -487,5 +532,269 @@ private fun SongItem(
                 }
             }
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Mix Project Card (playlist integration)
+// ═══════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MixProjectCard(
+    project: MixProject,
+    mixDao: MixProjectDao,
+    isPlaying: Boolean,
+    onTap: () -> Unit,
+    onDelete: () -> Unit,
+    isLocked: Boolean,
+    trackPlayingState: Map<Long, Boolean>,
+    onTrackVolumeChange: (MixTrack, Float) -> Unit,
+    onStopTrack: (Long) -> Unit,
+    onStartTrack: (MixTrack) -> Unit
+) {
+    val tracks by mixDao.getTracksForProject(project.id).collectAsState(initial = emptyList())
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Swipe state
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val revealWidthPx = with(density) { 70.dp.toPx() }
+    val offsetX = remember { Animatable(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                1.dp,
+                if (isPlaying) ClickTeal.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.3f),
+                RoundedCornerShape(12.dp)
+            )
+    ) {
+        // Background delete button (swipe)
+        if (offsetX.value < -1f) {
+            Row(
+                modifier = Modifier.matchParentSize().background(DarkBg),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(70.dp)
+                        .background(PadIdle)
+                        .clickable {
+                            scope.launch { offsetX.animateTo(0f, tween(200)) }
+                            showDeleteConfirm = true
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        // Foreground card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .background(PadIdle)
+                .then(
+                    if (!isLocked) {
+                        Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        val target = if (offsetX.value < -revealWidthPx / 2) -revealWidthPx else 0f
+                                        offsetX.animateTo(target, tween(200))
+                                    }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    scope.launch {
+                                        val newValue = (offsetX.value + dragAmount).coerceIn(-revealWidthPx, 0f)
+                                        offsetX.snapTo(newValue)
+                                    }
+                                }
+                            )
+                        }
+                    } else Modifier
+                )
+                .clickable { onTap() }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Mix icon badge
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(ClickTeal.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                ) {
+                    Icon(
+                        Icons.Default.GraphicEq,
+                        contentDescription = null,
+                        tint = ClickTeal,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = project.name,
+                        fontSize = 18.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Normal,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "${tracks.size} tracks • Mix",
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f)
+                    )
+                }
+
+                if (isPlaying) {
+                    Icon(
+                        Icons.Default.Stop,
+                        contentDescription = null,
+                        tint = ClickTeal,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            // Expanded per-track controls when playing
+            AnimatedVisibility(visible = isPlaying) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    tracks.forEach { track ->
+                        MixTrackSlider(
+                            track = track,
+                            isTrackPlaying = trackPlayingState[track.id] == true,
+                            onVolumeChange = { vol -> onTrackVolumeChange(track, vol) },
+                            onToggle = {
+                                if (trackPlayingState[track.id] == true) onStopTrack(track.id)
+                                else onStartTrack(track)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirm) {
+        val deleteSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { showDeleteConfirm = false },
+            sheetState = deleteSheetState,
+            containerColor = PadIdle,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Delete \"${project.name}\"?", fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("This action cannot be undone.", fontFamily = SpaceGrotesk, fontSize = 14.sp, color = TextSecondary)
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, TextSecondary)
+                    ) { Text("CANCEL", fontFamily = SpaceGrotesk, fontSize = 13.sp, color = TextSecondary) }
+                    Button(
+                        onClick = { onDelete(); showDeleteConfirm = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
+                    ) { Text("DELETE", fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MixTrackSlider(
+    track: MixTrack,
+    isTrackPlaying: Boolean,
+    onVolumeChange: (Float) -> Unit,
+    onToggle: () -> Unit
+) {
+    var localVol by remember(track.id, track.volume) { mutableStateOf(track.volume) }
+
+    val icon = when (track.trackType) {
+        "pad" -> Icons.Default.Piano
+        "click" -> Icons.Default.Timer
+        else -> Icons.Default.AudioFile
+    }
+    val color = when (track.trackType) {
+        "pad" -> LedAmber
+        "click" -> ClickTeal
+        else -> TextPrimary
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (isTrackPlaying) color else color.copy(alpha = 0.3f),
+            modifier = Modifier.size(16.dp).clickable { onToggle() }
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = track.label,
+            fontSize = 11.sp,
+            fontFamily = SpaceGrotesk,
+            color = TextSecondary,
+            maxLines = 1,
+            modifier = Modifier.width(70.dp),
+            overflow = TextOverflow.Ellipsis
+        )
+        Slider(
+            value = localVol,
+            onValueChange = { localVol = it },
+            onValueChangeFinished = { onVolumeChange(localVol) },
+            modifier = Modifier.weight(1f).height(24.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = color,
+                activeTrackColor = color.copy(alpha = 0.4f),
+                inactiveTrackColor = PadBorder
+            )
+        )
     }
 }

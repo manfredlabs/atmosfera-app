@@ -125,8 +125,9 @@ fun MixStudioListScreen(
         // FAB
         FloatingActionButton(
             onClick = onCreateNew,
-            containerColor = ClickTeal,
+            containerColor = LabsPurple,
             contentColor = TextPrimary,
+            shape = CircleShape,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp)

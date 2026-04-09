@@ -43,30 +43,31 @@ fun LabsScreen(
             shape = RoundedCornerShape(10.dp),
             color = PadIdle,
             border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier.fillMaxWidth().height(80.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Default.TouchApp,
                     contentDescription = null,
                     tint = ClickTeal,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(28.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Tap Tempo",
-                        fontSize = 15.sp,
+                        fontSize = 17.sp,
                         fontFamily = SpaceGrotesk,
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Find BPM by tapping",
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontFamily = SpaceGrotesk,
                         color = TextSecondary.copy(alpha = 0.6f)
                     )

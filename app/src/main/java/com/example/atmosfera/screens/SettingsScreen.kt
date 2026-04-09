@@ -1,5 +1,6 @@
 package com.example.atmosfera.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -35,7 +36,9 @@ fun SettingsScreen(
     onClickChannelChange: (ClickChannel) -> Unit,
     onFadeInChange: (Long) -> Unit = {},
     onFadeOutChange: (Long) -> Unit = {},
-    onManagePacks: () -> Unit = {}
+    onManagePacks: () -> Unit = {},
+    timeSignature: String = "4/4",
+    onTimeSignatureChange: (String) -> Unit = {}
 ){
         Column(
             modifier = Modifier
@@ -275,6 +278,61 @@ fun SettingsScreen(
                             inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
                         )
                     )
+                }
+
+                // Time Signature
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Time",
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary,
+                        modifier = Modifier.width(60.dp)
+                    )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
+                        signatures.forEach { sig ->
+                            val isSelected = timeSignature == sig
+                            Surface(
+                                onClick = { onTimeSignatureChange(sig) },
+                                shape = RoundedCornerShape(6.dp),
+                                color = when {
+                                    isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
+                                    isSelected -> PadActive
+                                    else -> PadIdle
+                                },
+                                border = BorderStroke(
+                                    1.dp,
+                                    when {
+                                        isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
+                                        isSelected -> PadBorder.copy(alpha = 0.8f)
+                                        else -> PadBorder.copy(alpha = 0.3f)
+                                    }
+                                ),
+                                modifier = Modifier.weight(1f).height(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text(
+                                        text = sig,
+                                        fontSize = 11.sp,
+                                        fontFamily = SpaceGrotesk,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = when {
+                                            isSelected && clickEnabled -> ClickTeal
+                                            isSelected -> TextPrimary
+                                            else -> TextSecondary.copy(alpha = 0.6f)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
                 var fadeOutMs by remember { mutableStateOf(savedFadeOut) }
                 var playlistLocked by remember { mutableStateOf(false) }
                 var tapTempoLongPress by remember { mutableStateOf(prefs.getBoolean("tapTempoLongPress", true)) }
+                var timeSignature by remember { mutableStateOf(prefs.getString("timeSignature", "4/4")!!) }
 
                 // Restore live values when navigating to home
                 LaunchedEffect(currentRoute) {
@@ -573,6 +574,20 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")
+                                },
+                                timeSignature = timeSignature,
+                                onTimeSignatureChange = { sig ->
+                                    timeSignature = sig
+                                    prefs.edit().putString("timeSignature", sig).apply()
+                                    val beats = sig.substringBefore("/").toInt()
+                                    val newAccents = List(beats) { it == 0 }
+                                    accents = newAccents
+                                    liveAccents = newAccents
+                                    audio.currentAccents = newAccents
+                                    prefs.edit().putString("liveAccents", newAccents.joinToString(",") { if (it) "1" else "0" }).apply()
+                                    if (clickEnabled) {
+                                        audio.restartClick(bpm, clickChannel, clickVolume, newAccents)
+                                    }
                                 }
                             )
                         }

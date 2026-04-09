@@ -35,8 +35,7 @@ data class SoundPack(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-@Entity(
-    tableName = "sound_pads",
+@Entity(tableName = "sound_pads",
     foreignKeys = [ForeignKey(
         entity = SoundPack::class,
         parentColumns = ["id"],
@@ -52,6 +51,44 @@ data class SoundPad(
     val mode: String,       // "neu", "maj", "min"
     val filePath: String,   // internal storage path to processed WAV
     val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "mix_projects")
+data class MixProject(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val sortOrder: Int = 0
+)
+
+@Entity(
+    tableName = "mix_tracks",
+    foreignKeys = [ForeignKey(
+        entity = MixProject::class,
+        parentColumns = ["id"],
+        childColumns = ["projectId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("projectId")]
+)
+data class MixTrack(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val projectId: Long,
+    val trackType: String,      // "pad", "click", "custom"
+    val label: String,
+    val volume: Float = 0.5f,
+    val channel: String = "mono",   // "left", "mono", "right"
+    val sortOrder: Int = 0,
+    // Pad-specific
+    val note: String? = null,
+    val padMode: String? = null,
+    val soundPackId: Long? = null,
+    // Click-specific
+    val bpm: Int? = null,
+    val accents: String? = null,
+    // Custom-specific
+    val filePath: String? = null,
+    val fileName: String? = null
 )
 
 @Dao
@@ -111,10 +148,50 @@ interface SoundPackDao {
     suspend fun removePad(packId: Long, note: String, mode: String)
 }
 
-@Database(entities = [Song::class, SoundPack::class, SoundPad::class], version = 10)
+@Dao
+interface MixProjectDao {
+    @Query("SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC")
+    fun getAll(): Flow<List<MixProject>>
+
+    @Query("SELECT * FROM mix_projects WHERE id = :id")
+    suspend fun getById(id: Long): MixProject?
+
+    @Insert
+    suspend fun insert(project: MixProject): Long
+
+    @Update
+    suspend fun update(project: MixProject)
+
+    @Delete
+    suspend fun delete(project: MixProject)
+
+    @Update
+    suspend fun updateAll(projects: List<MixProject>)
+
+    @Query("SELECT * FROM mix_tracks WHERE projectId = :projectId ORDER BY sortOrder ASC")
+    fun getTracksForProject(projectId: Long): Flow<List<MixTrack>>
+
+    @Query("SELECT * FROM mix_tracks WHERE projectId = :projectId ORDER BY sortOrder ASC")
+    suspend fun getTracksForProjectOnce(projectId: Long): List<MixTrack>
+
+    @Query("SELECT COUNT(*) FROM mix_tracks WHERE projectId = :projectId")
+    suspend fun getTrackCount(projectId: Long): Int
+
+    @Insert
+    suspend fun insertTrack(track: MixTrack): Long
+
+    @Update
+    suspend fun updateTrack(track: MixTrack)
+
+    @Delete
+    suspend fun deleteTrack(track: MixTrack)
+}
+
+@Database(entities = [Song::class, SoundPack::class, SoundPad::class, MixProject::class, MixTrack::class], version = 11)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun soundPackDao(): SoundPackDao
+    abstract fun mixProjectDao(): MixProjectDao
 
     companion object {
         @Volatile
@@ -195,6 +272,39 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS mix_projects (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        sortOrder INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS mix_tracks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        projectId INTEGER NOT NULL,
+                        trackType TEXT NOT NULL,
+                        label TEXT NOT NULL,
+                        volume REAL NOT NULL DEFAULT 0.5,
+                        channel TEXT NOT NULL DEFAULT 'mono',
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
+                        note TEXT,
+                        padMode TEXT,
+                        soundPackId INTEGER,
+                        bpm INTEGER,
+                        accents TEXT,
+                        filePath TEXT,
+                        fileName TEXT,
+                        FOREIGN KEY (projectId) REFERENCES mix_projects(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_mix_tracks_projectId ON mix_tracks(projectId)")
+            }
+        }
+
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val prefs = context.applicationContext.getSharedPreferences("atmosfera_settings", android.content.Context.MODE_PRIVATE)
@@ -203,7 +313,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "atmosfera_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)

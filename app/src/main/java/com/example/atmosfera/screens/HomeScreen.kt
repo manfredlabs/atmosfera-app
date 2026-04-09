@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -24,7 +26,7 @@ import com.example.atmosfera.data.SoundPack
 import com.example.atmosfera.model.Note
 import com.example.atmosfera.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     notes: List<Note>,
@@ -475,9 +477,10 @@ fun HomeScreen(
                     .height(clickBtnHeight)
                     .align(Alignment.CenterEnd)
                     .then(
-                        if (tapTempoLongPressEnabled) Modifier.pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { showTapTempo = true })
-                        } else Modifier
+                        if (tapTempoLongPressEnabled) Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = { showTapTempo = true }
+                        ) else Modifier
                     ),
                 contentAlignment = Alignment.Center
             ) {

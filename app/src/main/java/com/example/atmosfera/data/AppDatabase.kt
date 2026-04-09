@@ -153,6 +153,9 @@ interface MixProjectDao {
     @Query("SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC")
     fun getAll(): Flow<List<MixProject>>
 
+    @Query("SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC")
+    suspend fun getAllOnce(): List<MixProject>
+
     @Query("SELECT * FROM mix_projects WHERE id = :id")
     suspend fun getById(id: Long): MixProject?
 

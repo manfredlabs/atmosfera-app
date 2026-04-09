@@ -17,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -238,6 +240,8 @@ fun MixStudioEditorScreen(
     onDeleteTrackFile: (String?) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+    val isNewProject = projectId == null || projectId <= 0
 
     var project by remember { mutableStateOf<MixProject?>(null) }
     val tracks by if (projectId != null && projectId > 0) {
@@ -275,10 +279,22 @@ fun MixStudioEditorScreen(
             }
         }
         if (!initialized) {
-            val newId = mixDao.insert(MixProject(name = "My Mix"))
+            val allProjects = mixDao.getAllOnce()
+            val maxNum = allProjects
+                .mapNotNull { it.name.removePrefix("MyMix#").toIntOrNull() }
+                .maxOrNull() ?: 0
+            val defaultName = "MyMix#${maxNum + 1}"
+            val newId = mixDao.insert(MixProject(name = defaultName))
             project = mixDao.getById(newId)
-            nameField = TextFieldValue("My Mix", TextRange(7))
+            nameField = TextFieldValue(defaultName, TextRange(0, defaultName.length))
             initialized = true
+        }
+    }
+
+    // Auto-focus name field for new projects
+    LaunchedEffect(initialized) {
+        if (initialized && isNewProject) {
+            focusRequester.requestFocus()
         }
     }
 
@@ -368,7 +384,7 @@ fun MixStudioEditorScreen(
                 fontFamily = SpaceGrotesk,
                 fontSize = 16.sp
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
         )
 
         Spacer(modifier = Modifier.height(16.dp))

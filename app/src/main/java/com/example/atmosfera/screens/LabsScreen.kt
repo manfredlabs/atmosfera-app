@@ -35,7 +35,7 @@ fun LabsScreen(
         ) {
             Text(
                 text = "LABS",
-                fontSize = 13.sp,
+                fontSize = 22.sp,
                 fontFamily = SpaceGrotesk,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 6.sp,

@@ -60,7 +60,7 @@ fun LabsScreen(
                 Icon(
                     Icons.Default.TouchApp,
                     contentDescription = null,
-                    tint = ClickTeal,
+                    tint = LabsPurple,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
@@ -104,7 +104,7 @@ fun LabsScreen(
                 Icon(
                     Icons.Default.GraphicEq,
                     contentDescription = null,
-                    tint = ClickTeal,
+                    tint = LabsPurple,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))

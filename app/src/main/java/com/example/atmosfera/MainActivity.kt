@@ -571,7 +571,17 @@ class MainActivity : ComponentActivity() {
                                     scope.launch { mixProjectDao.updateTrack(track.copy(volume = vol)) }
                                 },
                                 onStopMixTrack = { trackId -> mixAudio.stopTrack(trackId) },
-                                onStartMixTrack = { track -> mixAudio.startTrack(track) }
+                                onStartMixTrack = { track -> mixAudio.startTrack(track) },
+                                onDeleteMixProject = { project ->
+                                    if (playingMixId == project.id) {
+                                        mixAudio.stopAll()
+                                        playingMixId = null
+                                    }
+                                    scope.launch {
+                                        mixFileManager.deleteProjectFiles(project.id)
+                                        mixProjectDao.delete(project)
+                                    }
+                                }
                             )
                         }
 
@@ -724,13 +734,24 @@ class MainActivity : ComponentActivity() {
                                 onCreateNew = {
                                     navController.navigate("mix_editor/new")
                                 },
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onDeleteProject = { project ->
+                                    scope.launch {
+                                        mixFileManager.deleteProjectFiles(project.id)
+                                        mixProjectDao.delete(project)
+                                    }
+                                }
                             )
                         }
 
                         composable("mix_editor/{projectId}") { backStackEntry ->
                             val projectIdArg = backStackEntry.arguments?.getString("projectId")
                             val projectId = if (projectIdArg == "new") null else projectIdArg?.toLongOrNull()
+
+                            // Stop mix audio when leaving this screen
+                            DisposableEffect(Unit) {
+                                onDispose { mixAudio.stopAll() }
+                            }
 
                             val padChStr = when (padChannel) {
                                 PadChannel.LEFT -> "left"
@@ -770,7 +791,12 @@ class MainActivity : ComponentActivity() {
                                 onStopTrack = { trackId -> mixAudio.stopTrack(trackId) },
                                 onStartAll = { tracks -> mixAudio.startAll(tracks) },
                                 onStopAll = { mixAudio.stopAll() },
-                                trackPlayingState = mixAudio.trackPlaying
+                                trackPlayingState = mixAudio.trackPlaying,
+                                onDeleteTrackFile = { filePath ->
+                                    if (filePath != null) {
+                                        mixFileManager.deleteTrackFile(filePath)
+                                    }
+                                }
                             )
                         }
                     }

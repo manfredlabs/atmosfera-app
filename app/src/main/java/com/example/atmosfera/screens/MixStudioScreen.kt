@@ -39,7 +39,8 @@ fun MixStudioListScreen(
     mixDao: MixProjectDao,
     onNavigateToEditor: (Long) -> Unit,
     onCreateNew: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDeleteProject: (MixProject) -> Unit = {}
 ) {
     val projects by mixDao.getAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -114,7 +115,7 @@ fun MixStudioListScreen(
                             project = project,
                             mixDao = mixDao,
                             onClick = { onNavigateToEditor(project.id) },
-                            onDelete = { scope.launch { mixDao.delete(project) } }
+                            onDelete = { onDeleteProject(project) }
                         )
                     }
                 }
@@ -232,7 +233,8 @@ fun MixStudioEditorScreen(
     onStopTrack: (Long) -> Unit,
     onStartAll: (List<MixTrack>) -> Unit,
     onStopAll: () -> Unit,
-    trackPlayingState: Map<Long, Boolean>
+    trackPlayingState: Map<Long, Boolean>,
+    onDeleteTrackFile: (String?) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
 
@@ -429,6 +431,7 @@ fun MixStudioEditorScreen(
                     },
                     onDelete = { scope.launch {
                         onStopTrack(track.id)
+                        if (track.trackType == "custom") onDeleteTrackFile(track.filePath)
                         mixDao.deleteTrack(track)
                     }}
                 )

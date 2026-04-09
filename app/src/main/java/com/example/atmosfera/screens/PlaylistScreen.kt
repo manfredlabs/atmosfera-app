@@ -93,7 +93,8 @@ fun PlaylistScreen(
     mixTrackPlayingState: Map<Long, Boolean> = emptyMap(),
     onMixTrackVolumeChange: (MixTrack, Float) -> Unit = { _, _ -> },
     onStopMixTrack: (Long) -> Unit = {},
-    onStartMixTrack: (MixTrack) -> Unit = {}
+    onStartMixTrack: (MixTrack) -> Unit = {},
+    onDeleteMixProject: (MixProject) -> Unit = {}
 ) {
     val songs by songDao.getAll().collectAsState(initial = emptyList())
     val mixProjects by mixProjectDao?.getAll()?.collectAsState(initial = emptyList()) ?: remember { mutableStateOf(emptyList()) }
@@ -205,7 +206,7 @@ fun PlaylistScreen(
                                             }
                                         }
                                     },
-                                    onDelete = { scope.launch { mixProjectDao.delete(project) } },
+                                    onDelete = { onDeleteMixProject(project) },
                                     isLocked = isLocked,
                                     trackPlayingState = mixTrackPlayingState,
                                     onTrackVolumeChange = onMixTrackVolumeChange,

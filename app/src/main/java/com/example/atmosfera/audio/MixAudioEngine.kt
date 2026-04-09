@@ -37,7 +37,7 @@ class MixAudioEngine(private val context: Context) {
     private lateinit var soundPool: SoundPool
     private var clickSoundId: Int = 0
     private var accentSoundId: Int = 0
-    private var soundPoolReady = false
+    @Volatile private var soundPoolReady = false
 
     /** Observable playing state per track: trackId → isPlaying */
     val trackPlaying = mutableStateMapOf<Long, Boolean>()
@@ -103,14 +103,13 @@ class MixAudioEngine(private val context: Context) {
         stopTrack(track.id)
 
         val uri = if (track.soundPackId == null || track.soundPackId <= 0L) {
-            // Built-in pad from resources
             val note = track.note ?: "c"
             val mode = track.padMode ?: "neu"
             val resName = "pad_${note}_${mode}"
             val resId = context.resources.getIdentifier(resName, "raw", context.packageName)
+            if (resId == 0) return
             "android.resource://${context.packageName}/$resId"
         } else {
-            // Custom sound pack — filePath should be set by caller
             track.filePath?.let { "file://$it" } ?: return
         }
 
@@ -156,7 +155,7 @@ class MixAudioEngine(private val context: Context) {
 
         clickTrackId = track.id
         isClickRunning = true
-        val bpm = track.bpm ?: 120
+        val bpm = (track.bpm ?: 120).coerceIn(30, 240)
         val accents = track.accents?.split(",")?.map {
             it.toIntOrNull() ?: 0
         } ?: listOf(1, 0, 0, 0)

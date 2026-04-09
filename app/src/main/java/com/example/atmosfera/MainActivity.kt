@@ -315,8 +315,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onAccentToggle = { index ->
                                     accents = accents.toMutableList().also {
-                                        // Cycle: 0 (normal) → 1 (accent) → 2 (muted) → 0
-                                        it[index] = (it[index] + 1) % 3
+                                        // Cycle: 1 (accent) → 0 (normal) → 2 (muted) → 1
+                                        it[index] = when (it[index]) { 1 -> 0; 0 -> 2; else -> 1 }
                                     }
                                     liveAccents = accents
                                     audio.currentAccents = accents

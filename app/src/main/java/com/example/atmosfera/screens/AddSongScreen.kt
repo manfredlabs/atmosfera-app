@@ -597,7 +597,7 @@ fun AddSongScreen(
                             .clickable {
                                 accents = accents
                                     .toMutableList()
-                                    .also { it[index] = (it[index] + 1) % 3 }
+                                    .also { it[index] = when (it[index]) { 1 -> 0; 0 -> 2; else -> 1 } }
                             },
                         contentAlignment = Alignment.Center
                     ) {

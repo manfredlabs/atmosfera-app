@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +20,8 @@ import com.example.atmosfera.ui.theme.*
 
 @Composable
 fun LabsScreen(
-    onNavigateToTapTempo: () -> Unit = {}
+    onNavigateToTapTempo: () -> Unit = {},
+    onNavigateToMixStudio: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -73,6 +75,50 @@ fun LabsScreen(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Find BPM by tapping",
+                        fontSize = 13.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f)
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // Mix Studio card
+        Surface(
+            onClick = onNavigateToMixStudio,
+            shape = RoundedCornerShape(10.dp),
+            color = PadIdle,
+            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+            modifier = Modifier.fillMaxWidth().height(70.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.GraphicEq,
+                    contentDescription = null,
+                    tint = ClickTeal,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Mix Studio",
+                        fontSize = 17.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Multi-track mixer",
                         fontSize = 13.sp,
                         fontFamily = SpaceGrotesk,
                         color = TextSecondary.copy(alpha = 0.6f)

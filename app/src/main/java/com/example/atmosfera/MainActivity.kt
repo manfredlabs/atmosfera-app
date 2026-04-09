@@ -5,6 +5,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
@@ -28,6 +29,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.atmosfera.audio.AudioEngine
+import com.example.atmosfera.audio.MixAudioEngine
+import com.example.atmosfera.audio.MixFileManager
 import com.example.atmosfera.audio.PadProcessor
 import com.example.atmosfera.data.AppDatabase
 import com.example.atmosfera.data.SoundPack
@@ -39,6 +42,8 @@ import com.example.atmosfera.model.availablePadsSet
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
 import com.example.atmosfera.screens.LabsScreen
+import com.example.atmosfera.screens.MixStudioEditorScreen
+import com.example.atmosfera.screens.MixStudioListScreen
 import com.example.atmosfera.screens.TapTempoScreen
 import com.example.atmosfera.screens.PlaylistScreen
 import com.example.atmosfera.screens.SettingsScreen
@@ -49,6 +54,8 @@ import com.example.atmosfera.ui.theme.*
 class MainActivity : ComponentActivity() {
 
     private lateinit var audio: AudioEngine
+    private lateinit var mixAudio: MixAudioEngine
+    private lateinit var mixFileManager: MixFileManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +63,9 @@ class MainActivity : ComponentActivity() {
 
         audio = AudioEngine(this)
         audio.init(R.raw.click, R.raw.click_accent)
+        mixAudio = MixAudioEngine(this)
+        mixAudio.init(R.raw.click, R.raw.click_accent)
+        mixFileManager = MixFileManager(this)
 
         val prefs = getSharedPreferences("atmosfera_settings", MODE_PRIVATE)
         val savedPadVolume = prefs.getFloat("padVolume", 0.5f)
@@ -78,6 +88,7 @@ class MainActivity : ComponentActivity() {
                 val db = remember { AppDatabase.getInstance(this@MainActivity) }
                 val songDao = remember { db.songDao() }
                 val soundPackDao = remember { db.soundPackDao() }
+                val mixProjectDao = remember { db.mixProjectDao() }
                 val padProcessor = remember { PadProcessor(this@MainActivity) }
                 val soundPackDir = remember { java.io.File(filesDir, "soundpacks").also { it.mkdirs() } }
 
@@ -122,6 +133,43 @@ class MainActivity : ComponentActivity() {
                 var playlistLocked by remember { mutableStateOf(false) }
                 var tapTempoLongPress by remember { mutableStateOf(prefs.getBoolean("tapTempoLongPress", true)) }
                 var timeSignature by remember { mutableStateOf(prefs.getString("timeSignature", "4/4")!!) }
+
+                // Mix Studio state
+                var pendingAudioUri by remember { mutableStateOf<String?>(null) }
+                var pendingAudioName by remember { mutableStateOf<String?>(null) }
+
+                // File picker for Mix Studio custom audio
+                val audioPickerLauncher = rememberLauncherForActivityResult(
+                    contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+                ) { uri ->
+                    if (uri != null) {
+                        val cursor = contentResolver.query(uri, null, null, null, null)
+                        val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        cursor?.moveToFirst()
+                        val displayName = if (nameIndex != null && nameIndex >= 0) cursor?.getString(nameIndex) else "Audio"
+                        cursor?.close()
+
+                        // Get current editor project ID from nav
+                        val editorRoute = navController.currentBackStackEntry?.destination?.route
+                        val projectIdStr = navController.currentBackStackEntry?.arguments?.getString("projectId")
+                        val projectId = projectIdStr?.toLongOrNull() ?: 0L
+
+                        if (projectId > 0L) {
+                            scope.launch {
+                                val count = mixProjectDao.getTrackCount(projectId)
+                                if (count < 6) {
+                                    // Copy file to internal storage
+                                    val trackId = System.currentTimeMillis()
+                                    val internalPath = mixFileManager.copyAudioToStorage(
+                                        projectId, trackId, uri, displayName ?: "audio"
+                                    )
+                                    pendingAudioUri = internalPath
+                                    pendingAudioName = displayName ?: "Audio"
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Restore live values when navigating to home
                 LaunchedEffect(currentRoute) {
@@ -603,6 +651,9 @@ class MainActivity : ComponentActivity() {
                             LabsScreen(
                                 onNavigateToTapTempo = {
                                     navController.navigate("tap_tempo")
+                                },
+                                onNavigateToMixStudio = {
+                                    navController.navigate("mix_studio")
                                 }
                             )
                         }
@@ -630,6 +681,65 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
+                        composable("mix_studio") {
+                            MixStudioListScreen(
+                                mixDao = mixProjectDao,
+                                onNavigateToEditor = { projectId ->
+                                    navController.navigate("mix_editor/$projectId")
+                                },
+                                onCreateNew = {
+                                    navController.navigate("mix_editor/new")
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable("mix_editor/{projectId}") { backStackEntry ->
+                            val projectIdArg = backStackEntry.arguments?.getString("projectId")
+                            val projectId = if (projectIdArg == "new") null else projectIdArg?.toLongOrNull()
+
+                            val padChStr = when (padChannel) {
+                                PadChannel.LEFT -> "left"
+                                PadChannel.RIGHT -> "right"
+                                else -> "mono"
+                            }
+                            val clickChStr = when (clickChannel) {
+                                ClickChannel.LEFT -> "left"
+                                ClickChannel.RIGHT -> "right"
+                                else -> "mono"
+                            }
+
+                            MixStudioEditorScreen(
+                                projectId = projectId,
+                                mixDao = mixProjectDao,
+                                allPacks = allPacks,
+                                defaultPadVolume = padVolume,
+                                defaultPadChannel = padChStr,
+                                defaultClickVolume = clickVolume,
+                                defaultClickChannel = clickChStr,
+                                defaultBpm = bpm,
+                                defaultAccents = accents,
+                                onBack = {
+                                    mixAudio.stopAll()
+                                    navController.popBackStack()
+                                },
+                                onPickAudioFile = {
+                                    audioPickerLauncher.launch(arrayOf("audio/*"))
+                                },
+                                pendingAudioUri = pendingAudioUri,
+                                pendingAudioName = pendingAudioName,
+                                onAudioConsumed = {
+                                    pendingAudioUri = null
+                                    pendingAudioName = null
+                                },
+                                onStartTrack = { track -> mixAudio.startTrack(track) },
+                                onStopTrack = { trackId -> mixAudio.stopTrack(trackId) },
+                                onStartAll = { tracks -> mixAudio.startAll(tracks) },
+                                onStopAll = { mixAudio.stopAll() },
+                                trackPlayingState = mixAudio.trackPlaying
+                            )
+                        }
                     }
                 }
             }
@@ -639,5 +749,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         audio.release()
+        mixAudio.release()
     }
 }

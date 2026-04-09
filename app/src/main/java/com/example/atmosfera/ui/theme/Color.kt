@@ -21,3 +21,4 @@ val ClickTealDim = Color(0xFF0A3538)
 
 // Labs accent color
 val LabsPurple = Color(0xFF9C6ADE)
+val LabsPurpleDim = Color(0xFF2A1F3D)

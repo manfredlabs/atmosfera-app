@@ -433,10 +433,15 @@ fun MixStudioEditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Header with back
-        Box(modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
             IconButton(
                 onClick = {
                     scope.launch {
@@ -459,73 +464,79 @@ fun MixStudioEditorScreen(
                 text = "MIX STUDIO",
                 fontSize = 22.sp,
                 fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 6.sp,
-                color = TextSecondary,
-                modifier = Modifier.align(Alignment.Center)
+                fontWeight = FontWeight.Light,
+                letterSpacing = 2.sp,
+                color = TextPrimary
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Project name
-        OutlinedTextField(
-            value = nameField,
-            onValueChange = {
-                if (it.text.length <= 30) {
-                    nameField = it
-                    scope.launch { currentProject?.let { p -> mixDao.update(p.copy(name = it.text.trim().ifBlank { "My Mix" })) } }
-                }
-            },
-            label = { Text("PROJECT NAME", fontFamily = SpaceGrotesk, fontSize = 11.sp, letterSpacing = 2.sp) },
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedBorderColor = ClickTeal,
-                unfocusedBorderColor = PadBorder,
-                focusedLabelColor = ClickTeal,
-                unfocusedLabelColor = TextSecondary,
-                cursorColor = ClickTeal
-            ),
-            textStyle = androidx.compose.ui.text.TextStyle(
-                fontFamily = SpaceGrotesk,
-                fontSize = 16.sp
-            ),
-            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Track count header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        // ─── Name ───
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "TRACKS",
+                text = "NAME",
                 fontSize = 12.sp,
                 fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 3.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
                 color = TextSecondary
             )
-            Text(
-                text = "${tracks.size}/6",
-                fontSize = 12.sp,
-                fontFamily = SpaceGrotesk,
-                color = if (tracks.size >= 6) LedAmber else TextSecondary.copy(alpha = 0.6f)
+            OutlinedTextField(
+                value = nameField,
+                onValueChange = {
+                    if (it.text.length <= 30) {
+                        nameField = it
+                        scope.launch { currentProject?.let { p -> mixDao.update(p.copy(name = it.text.trim().ifBlank { "My Mix" })) } }
+                    }
+                },
+                placeholder = {
+                    Text(
+                        "e.g. Worship Set 1",
+                        fontFamily = SpaceGrotesk,
+                        fontSize = 16.sp,
+                        color = TextSecondary.copy(alpha = 0.4f)
+                    )
+                },
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 18.sp,
+                    fontFamily = SpaceGrotesk
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedBorderColor = LabsPurple,
+                    unfocusedBorderColor = PadBorder.copy(alpha = 0.5f),
+                    focusedContainerColor = PadIdle,
+                    unfocusedContainerColor = PadIdle,
+                    cursorColor = LabsPurple
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Tracks list
-        Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        // ─── Tracks ───
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "TRACKS",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary
+                )
+                Text(
+                    text = "${tracks.size}/6",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    color = if (tracks.size >= 6) LabsPurple else TextSecondary.copy(alpha = 0.6f)
+                )
+            }
             if (tracks.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
@@ -579,7 +590,7 @@ fun MixStudioEditorScreen(
                         Icon(
                             Icons.Default.Add,
                             contentDescription = null,
-                            tint = ClickTeal,
+                            tint = LabsPurple,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -588,49 +599,45 @@ fun MixStudioEditorScreen(
                             fontSize = 14.sp,
                             fontFamily = SpaceGrotesk,
                             fontWeight = FontWeight.Medium,
-                            color = ClickTeal
+                            color = LabsPurple
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Bottom controls: Play All / Stop All
+        // ─── Controls ───
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val anyPlaying = trackPlayingState.values.any { it }
 
-            Surface(
+            Button(
                 onClick = {
                     if (anyPlaying) onStopAll()
                     else if (tracks.isNotEmpty()) onStartAll(tracks)
                 },
                 shape = RoundedCornerShape(10.dp),
-                color = if (anyPlaying) LedAmber else ClickTeal,
-                modifier = Modifier.weight(1f).height(48.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LabsPurple,
+                    contentColor = Color.White
+                ),
+                modifier = Modifier.weight(1f).height(50.dp)
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (anyPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = DarkBg,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (anyPlaying) "Stop All" else "Play All",
-                            fontSize = 15.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = DarkBg
-                        )
-                    }
-                }
+                Icon(
+                    if (anyPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (anyPlaying) "STOP ALL" else "PLAY ALL",
+                    fontSize = 14.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
             }
         }
     }
@@ -728,10 +735,10 @@ fun MixStudioEditorScreen(
                         Surface(
                             onClick = { padMode = mode },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (padMode == mode) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
+                            color = if (padMode == mode) LabsPurple.copy(alpha = 0.2f) else Color.Transparent,
                             border = BorderStroke(
                                 1.dp,
-                                if (padMode == mode) ClickTeal else PadBorder.copy(alpha = 0.3f)
+                                if (padMode == mode) LabsPurple else PadBorder.copy(alpha = 0.3f)
                             ),
                             modifier = Modifier.weight(1f).height(40.dp)
                         ) {
@@ -741,7 +748,7 @@ fun MixStudioEditorScreen(
                                     fontSize = 14.sp,
                                     fontFamily = SpaceGrotesk,
                                     fontWeight = FontWeight.Medium,
-                                    color = if (padMode == mode) ClickTeal else TextSecondary
+                                    color = if (padMode == mode) LabsPurple else TextSecondary
                                 )
                             }
                         }
@@ -757,10 +764,10 @@ fun MixStudioEditorScreen(
                             Surface(
                                 onClick = { padNote = note },
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (selected) LedAmber.copy(alpha = 0.15f) else Color.Transparent,
+                                color = if (selected) LabsPurple.copy(alpha = 0.15f) else Color.Transparent,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (selected) LedAmber else PadBorder.copy(alpha = 0.3f)
+                                    if (selected) LabsPurple else PadBorder.copy(alpha = 0.3f)
                                 ),
                                 modifier = Modifier.weight(1f).height(44.dp)
                             ) {
@@ -770,7 +777,7 @@ fun MixStudioEditorScreen(
                                         fontSize = 15.sp,
                                         fontFamily = SpaceGrotesk,
                                         fontWeight = FontWeight.Medium,
-                                        color = if (selected) LedAmber else TextPrimary
+                                        color = if (selected) LabsPurple else TextPrimary
                                     )
                                 }
                             }
@@ -796,10 +803,10 @@ fun MixStudioEditorScreen(
                             Surface(
                                 onClick = { padPackId = pack.id },
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (selected) ClickTeal.copy(alpha = 0.15f) else Color.Transparent,
+                                color = if (selected) LabsPurple.copy(alpha = 0.15f) else Color.Transparent,
                                 border = BorderStroke(
                                     1.dp,
-                                    if (selected) ClickTeal else PadBorder.copy(alpha = 0.3f)
+                                    if (selected) LabsPurple else PadBorder.copy(alpha = 0.3f)
                                 ),
                                 modifier = Modifier.weight(1f).height(36.dp)
                             ) {
@@ -808,7 +815,7 @@ fun MixStudioEditorScreen(
                                         text = pack.name,
                                         fontSize = 12.sp,
                                         fontFamily = SpaceGrotesk,
-                                        color = if (selected) ClickTeal else TextSecondary,
+                                        color = if (selected) LabsPurple else TextSecondary,
                                         maxLines = 1
                                     )
                                 }
@@ -844,7 +851,7 @@ fun MixStudioEditorScreen(
                         showPadConfig = false
                     },
                     shape = RoundedCornerShape(10.dp),
-                    color = ClickTeal,
+                    color = LabsPurple,
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -907,13 +914,13 @@ fun MixStudioEditorScreen(
                             fontSize = 32.sp,
                             fontFamily = SpaceGrotesk,
                             fontWeight = FontWeight.Bold,
-                            color = ClickTeal
+                            color = LabsPurple
                         )
                         Text(
                             text = "BPM",
                             fontSize = 11.sp,
                             fontFamily = SpaceGrotesk,
-                            color = ClickTeal.copy(alpha = 0.5f)
+                            color = LabsPurple.copy(alpha = 0.5f)
                         )
                     }
                     Spacer(modifier = Modifier.width(24.dp))
@@ -951,8 +958,8 @@ fun MixStudioEditorScreen(
                                 clickAccents = List(beats) { if (it == 0) 1 else 0 }
                             },
                             shape = RoundedCornerShape(6.dp),
-                            color = if (sel) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
-                            border = BorderStroke(1.dp, if (sel) ClickTeal else PadBorder.copy(alpha = 0.3f)),
+                            color = if (sel) LabsPurple.copy(alpha = 0.2f) else Color.Transparent,
+                            border = BorderStroke(1.dp, if (sel) LabsPurple else PadBorder.copy(alpha = 0.3f)),
                             modifier = Modifier.weight(1f).height(34.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -961,7 +968,7 @@ fun MixStudioEditorScreen(
                                     fontSize = 13.sp,
                                     fontFamily = SpaceGrotesk,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (sel) ClickTeal else TextSecondary
+                                    color = if (sel) LabsPurple else TextSecondary
                                 )
                             }
                         }
@@ -983,14 +990,14 @@ fun MixStudioEditorScreen(
                             },
                             shape = CircleShape,
                             color = when (state) {
-                                1 -> ClickTeal.copy(alpha = 0.2f)
+                                1 -> LabsPurple.copy(alpha = 0.2f)
                                 2 -> Color.Transparent
                                 else -> Color.Transparent
                             },
                             border = BorderStroke(
                                 width = if (state == 1) 2.dp else 1.dp,
                                 color = when (state) {
-                                    1 -> ClickTeal
+                                    1 -> LabsPurple
                                     2 -> PadBorder.copy(alpha = 0.15f)
                                     else -> PadBorder.copy(alpha = 0.4f)
                                 }
@@ -1006,7 +1013,7 @@ fun MixStudioEditorScreen(
                                         fontSize = 13.sp,
                                         fontFamily = SpaceGrotesk,
                                         fontWeight = if (state == 1) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (state == 1) ClickTeal else TextSecondary
+                                        color = if (state == 1) LabsPurple else TextSecondary
                                     )
                                 }
                             }
@@ -1037,7 +1044,7 @@ fun MixStudioEditorScreen(
                         showClickConfig = false
                     },
                     shape = RoundedCornerShape(10.dp),
-                    color = ClickTeal,
+                    color = LabsPurple,
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -1077,7 +1084,7 @@ private fun TrackCard(
         color = PadIdle,
         border = BorderStroke(
             1.dp,
-            if (isPlaying) ClickTeal.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.3f)
+            if (isPlaying) LabsPurple.copy(alpha = 0.4f) else PadBorder.copy(alpha = 0.3f)
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1093,11 +1100,7 @@ private fun TrackCard(
                     "click" -> Icons.Default.Timer
                     else -> Icons.Default.AudioFile
                 }
-                val tint = when (track.trackType) {
-                    "pad" -> LedAmber
-                    "click" -> ClickTeal
-                    else -> TextPrimary
-                }
+                val tint = LabsPurple
                 Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
                 Spacer(modifier = Modifier.width(10.dp))
 
@@ -1124,7 +1127,7 @@ private fun TrackCard(
                     Icon(
                         if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = if (isPlaying) LedAmber else ClickTeal,
+                        tint = if (isPlaying) Color(0xFFFF6B6B) else LabsPurple,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1154,12 +1157,8 @@ private fun TrackCard(
                     onValueChangeFinished = { onVolumeChange(localVolume) },
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = when (track.trackType) {
-                            "pad" -> LedAmber; "click" -> ClickTeal; else -> TextPrimary
-                        },
-                        activeTrackColor = when (track.trackType) {
-                            "pad" -> LedAmber; "click" -> ClickTeal; else -> TextPrimary
-                        },
+                        thumbColor = LabsPurple,
+                        activeTrackColor = LabsPurple,
                         inactiveTrackColor = PadBorder
                     )
                 )
@@ -1173,10 +1172,10 @@ private fun TrackCard(
                         Surface(
                             onClick = { onChannelChange(ch) },
                             shape = RoundedCornerShape(4.dp),
-                            color = if (sel) ClickTeal.copy(alpha = 0.2f) else Color.Transparent,
+                            color = if (sel) LabsPurple.copy(alpha = 0.2f) else Color.Transparent,
                             border = BorderStroke(
                                 1.dp,
-                                if (sel) ClickTeal else PadBorder.copy(alpha = 0.3f)
+                                if (sel) LabsPurple else PadBorder.copy(alpha = 0.3f)
                             ),
                             modifier = Modifier.size(28.dp)
                         ) {
@@ -1186,7 +1185,7 @@ private fun TrackCard(
                                     fontSize = 11.sp,
                                     fontFamily = SpaceGrotesk,
                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (sel) ClickTeal else TextSecondary.copy(alpha = 0.5f)
+                                    color = if (sel) LabsPurple else TextSecondary.copy(alpha = 0.5f)
                                 )
                             }
                         }
@@ -1216,7 +1215,7 @@ private fun TrackTypeOption(
             modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = ClickTeal, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = LabsPurple, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

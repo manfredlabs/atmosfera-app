@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +19,73 @@ import com.example.atmosfera.ui.theme.*
 
 @Composable
 fun LabsScreen(
+    onNavigateToTapTempo: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "LABS",
+            fontSize = 13.sp,
+            fontFamily = SpaceGrotesk,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            color = TextSecondary
+        )
+
+        // Tap Tempo card
+        Surface(
+            onClick = onNavigateToTapTempo,
+            shape = RoundedCornerShape(10.dp),
+            color = PadIdle,
+            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.TouchApp,
+                    contentDescription = null,
+                    tint = ClickTeal,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Tap Tempo",
+                        fontSize = 15.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Find BPM by tapping",
+                        fontSize = 11.sp,
+                        fontFamily = SpaceGrotesk,
+                        color = TextSecondary.copy(alpha = 0.6f)
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TapTempoScreen(
+    tapTempoLongPress: Boolean = true,
+    onTapTempoLongPressChange: (Boolean) -> Unit = {},
     onApplyBpm: (Int) -> Unit = {}
 ) {
     val tapTimes = remember { mutableStateListOf<Long>() }
@@ -27,11 +97,11 @@ fun LabsScreen(
             .fillMaxSize()
             .background(DarkBg)
             .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
         Text(
-            text = "LABS",
+            text = "TAP TEMPO",
             fontSize = 13.sp,
             fontFamily = SpaceGrotesk,
             fontWeight = FontWeight.Bold,
@@ -39,131 +109,142 @@ fun LabsScreen(
             color = TextSecondary
         )
 
-        // Tap Tempo Card
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // BPM display
+        Text(
+            text = if (tapBpm.intValue > 0) "${tapBpm.intValue}" else "—",
+            fontSize = 64.sp,
+            fontFamily = SpaceGrotesk,
+            fontWeight = FontWeight.Bold,
+            color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
+        )
+
+        Text(
+            text = when {
+                tapBpm.intValue > 0 -> "BPM  ·  ${tapCount.intValue} taps"
+                else -> "Tap the button to start"
+            },
+            fontSize = 13.sp,
+            fontFamily = SpaceGrotesk,
+            color = TextSecondary.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Tap button
         Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = PadIdle,
-            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth()
+            onClick = {
+                val now = System.currentTimeMillis()
+                if (tapTimes.isNotEmpty() && now - tapTimes.last() > 2000) {
+                    tapTimes.clear()
+                }
+                tapTimes.add(now)
+                if (tapTimes.size > 8) tapTimes.removeAt(0)
+                tapCount.intValue = tapTimes.size
+                if (tapTimes.size >= 2) {
+                    val intervals = tapTimes.zipWithNext { a, b -> b - a }
+                    val avgMs = intervals.average()
+                    tapBpm.intValue = (60000.0 / avgMs).toInt().coerceIn(30, 240)
+                }
+            },
+            shape = CircleShape,
+            color = ClickTealDim,
+            border = BorderStroke(2.dp, ClickTeal.copy(alpha = 0.5f)),
+            modifier = Modifier.size(140.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "TAP",
+                    fontSize = 24.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    color = ClickTeal
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                onClick = {
+                    tapTimes.clear()
+                    tapBpm.intValue = 0
+                    tapCount.intValue = 0
+                },
+                shape = RoundedCornerShape(8.dp),
+                color = PadIdle,
+                border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text("Reset", fontSize = 14.sp, fontFamily = SpaceGrotesk, color = TextSecondary)
+                }
+            }
+
+            Surface(
+                onClick = {
+                    if (tapBpm.intValue > 0) {
+                        onApplyBpm(tapBpm.intValue)
+                    }
+                },
+                shape = RoundedCornerShape(8.dp),
+                color = if (tapBpm.intValue > 0) ClickTealDim else PadIdle,
+                border = BorderStroke(
+                    1.dp,
+                    if (tapBpm.intValue > 0) ClickTeal.copy(alpha = 0.4f)
+                    else PadBorder.copy(alpha = 0.3f)
+                ),
+                modifier = Modifier.weight(1f).height(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        "Apply & Go Live",
+                        fontSize = 14.sp,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Shortcut toggle
+        HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
+
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = PadIdle,
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "TAP TEMPO",
-                    fontSize = 12.sp,
+                    text = "Long press BPM shortcut",
+                    fontSize = 14.sp,
                     fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = TextSecondary
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
                 )
-
-                // BPM display
-                Text(
-                    text = if (tapBpm.intValue > 0) "${tapBpm.intValue}" else "—",
-                    fontSize = 56.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
+                Switch(
+                    checked = tapTempoLongPress,
+                    onCheckedChange = onTapTempoLongPressChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = ClickTeal,
+                        checkedTrackColor = ClickTealDim,
+                        uncheckedThumbColor = TextSecondary,
+                        uncheckedTrackColor = PadIdle
+                    )
                 )
-
-                Text(
-                    text = when {
-                        tapBpm.intValue > 0 -> "BPM  ·  ${tapCount.intValue} taps"
-                        else -> "Tap the button to start"
-                    },
-                    fontSize = 13.sp,
-                    fontFamily = SpaceGrotesk,
-                    color = TextSecondary.copy(alpha = 0.6f)
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Tap button
-                Surface(
-                    onClick = {
-                        val now = System.currentTimeMillis()
-                        if (tapTimes.isNotEmpty() && now - tapTimes.last() > 2000) {
-                            tapTimes.clear()
-                        }
-                        tapTimes.add(now)
-                        if (tapTimes.size > 8) tapTimes.removeAt(0)
-                        tapCount.intValue = tapTimes.size
-                        if (tapTimes.size >= 2) {
-                            val intervals = tapTimes.zipWithNext { a, b -> b - a }
-                            val avgMs = intervals.average()
-                            tapBpm.intValue = (60000.0 / avgMs).toInt().coerceIn(30, 240)
-                        }
-                    },
-                    shape = CircleShape,
-                    color = ClickTealDim,
-                    border = BorderStroke(2.dp, ClickTeal.copy(alpha = 0.5f)),
-                    modifier = Modifier.size(120.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = "TAP",
-                            fontSize = 22.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = ClickTeal
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Reset
-                    Surface(
-                        onClick = {
-                            tapTimes.clear()
-                            tapBpm.intValue = 0
-                            tapCount.intValue = 0
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        color = PadIdle,
-                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-                        modifier = Modifier.weight(1f).height(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text("Reset", fontSize = 14.sp, fontFamily = SpaceGrotesk, color = TextSecondary)
-                        }
-                    }
-
-                    // Apply → sets BPM and navigates to Live
-                    Surface(
-                        onClick = {
-                            if (tapBpm.intValue > 0) {
-                                onApplyBpm(tapBpm.intValue)
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (tapBpm.intValue > 0) ClickTealDim else PadIdle,
-                        border = BorderStroke(
-                            1.dp,
-                            if (tapBpm.intValue > 0) ClickTeal.copy(alpha = 0.4f)
-                            else PadBorder.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier.weight(1f).height(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                "Apply & Go Live",
-                                fontSize = 14.sp,
-                                fontFamily = SpaceGrotesk,
-                                fontWeight = FontWeight.Bold,
-                                color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
-                            )
-                        }
-                    }
-                }
             }
         }
     }

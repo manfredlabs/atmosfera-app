@@ -39,6 +39,7 @@ import com.example.atmosfera.model.availablePadsSet
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
 import com.example.atmosfera.screens.LabsScreen
+import com.example.atmosfera.screens.TapTempoScreen
 import com.example.atmosfera.screens.PlaylistScreen
 import com.example.atmosfera.screens.SettingsScreen
 import com.example.atmosfera.screens.SoundPackListScreen
@@ -572,17 +573,25 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")
-                                },
-                                tapTempoLongPress = tapTempoLongPress,
-                                onTapTempoLongPressChange = {
-                                    tapTempoLongPress = it
-                                    prefs.edit().putBoolean("tapTempoLongPress", it).apply()
                                 }
                             )
                         }
 
                         composable("labs") {
                             LabsScreen(
+                                onNavigateToTapTempo = {
+                                    navController.navigate("tap_tempo")
+                                }
+                            )
+                        }
+
+                        composable("tap_tempo") {
+                            TapTempoScreen(
+                                tapTempoLongPress = tapTempoLongPress,
+                                onTapTempoLongPressChange = {
+                                    tapTempoLongPress = it
+                                    prefs.edit().putBoolean("tapTempoLongPress", it).apply()
+                                },
                                 onApplyBpm = { newBpm ->
                                     bpm = newBpm
                                     liveBpm = newBpm

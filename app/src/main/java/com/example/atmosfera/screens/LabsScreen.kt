@@ -24,7 +24,7 @@ fun LabsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(LabsBg)
+            .background(DarkBg)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -39,7 +39,7 @@ fun LabsScreen(
                 fontFamily = SpaceGrotesk,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 6.sp,
-                color = LabsPurple.copy(alpha = 0.7f)
+                color = TextSecondary
             )
         }
 
@@ -47,8 +47,8 @@ fun LabsScreen(
         Surface(
             onClick = onNavigateToTapTempo,
             shape = RoundedCornerShape(10.dp),
-            color = LabsPurpleDim,
-            border = BorderStroke(1.dp, LabsPurple.copy(alpha = 0.15f)),
+            color = PadIdle,
+            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
             modifier = Modifier.fillMaxWidth().height(70.dp)
         ) {
             Row(
@@ -58,7 +58,7 @@ fun LabsScreen(
                 Icon(
                     Icons.Default.TouchApp,
                     contentDescription = null,
-                    tint = LabsPurple,
+                    tint = ClickTeal,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
@@ -81,7 +81,7 @@ fun LabsScreen(
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = LabsPurple.copy(alpha = 0.4f),
+                    tint = TextSecondary.copy(alpha = 0.4f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -102,7 +102,7 @@ fun TapTempoScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(LabsBg)
+            .background(DarkBg)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -117,7 +117,7 @@ fun TapTempoScreen(
                 fontFamily = SpaceGrotesk,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 6.sp,
-                color = LabsPurple.copy(alpha = 0.7f)
+                color = TextSecondary
             )
         }
 
@@ -129,7 +129,7 @@ fun TapTempoScreen(
             fontSize = 64.sp,
             fontFamily = SpaceGrotesk,
             fontWeight = FontWeight.Bold,
-            color = if (tapBpm.intValue > 0) LabsPurple else TextSecondary.copy(alpha = 0.3f)
+            color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
         )
 
         Text(
@@ -161,8 +161,8 @@ fun TapTempoScreen(
                 }
             },
             shape = CircleShape,
-            color = LabsPurpleDim,
-            border = BorderStroke(2.dp, LabsPurple.copy(alpha = 0.5f)),
+            color = ClickTealDim,
+            border = BorderStroke(2.dp, ClickTeal.copy(alpha = 0.5f)),
             modifier = Modifier.size(140.dp)
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -171,7 +171,7 @@ fun TapTempoScreen(
                     fontSize = 24.sp,
                     fontFamily = SpaceGrotesk,
                     fontWeight = FontWeight.Bold,
-                    color = LabsPurple
+                    color = ClickTeal
                 )
             }
         }
@@ -206,10 +206,10 @@ fun TapTempoScreen(
                     }
                 },
                 shape = RoundedCornerShape(8.dp),
-                color = if (tapBpm.intValue > 0) LabsPurpleDim else PadIdle,
+                color = if (tapBpm.intValue > 0) ClickTealDim else PadIdle,
                 border = BorderStroke(
                     1.dp,
-                    if (tapBpm.intValue > 0) LabsPurple.copy(alpha = 0.4f)
+                    if (tapBpm.intValue > 0) ClickTeal.copy(alpha = 0.4f)
                     else PadBorder.copy(alpha = 0.3f)
                 ),
                 modifier = Modifier.weight(1f).height(48.dp)
@@ -220,7 +220,7 @@ fun TapTempoScreen(
                         fontSize = 14.sp,
                         fontFamily = SpaceGrotesk,
                         fontWeight = FontWeight.Bold,
-                        color = if (tapBpm.intValue > 0) LabsPurple else TextSecondary.copy(alpha = 0.3f)
+                        color = if (tapBpm.intValue > 0) ClickTeal else TextSecondary.copy(alpha = 0.3f)
                     )
                 }
             }
@@ -233,7 +233,7 @@ fun TapTempoScreen(
 
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = LabsPurpleDim,
+            color = PadIdle,
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
             Row(
@@ -251,8 +251,8 @@ fun TapTempoScreen(
                     checked = tapTempoLongPress,
                     onCheckedChange = onTapTempoLongPressChange,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = LabsPurple,
-                        checkedTrackColor = LabsPurpleDim,
+                        checkedThumbColor = ClickTeal,
+                        checkedTrackColor = ClickTealDim,
                         uncheckedThumbColor = TextSecondary,
                         uncheckedTrackColor = PadIdle
                     )

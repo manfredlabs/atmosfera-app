@@ -18,8 +18,3 @@ val LedBeat = Color(0xFFE8A317)
 // Click accent color
 val ClickTeal = Color(0xFF1B98A6)
 val ClickTealDim = Color(0xFF0A3538)
-
-// Labs accent color
-val LabsPurple = Color(0xFF9C6ADE)
-val LabsPurpleDim = Color(0xFF1A0F2E)
-val LabsBg = Color(0xFF0C0A10)

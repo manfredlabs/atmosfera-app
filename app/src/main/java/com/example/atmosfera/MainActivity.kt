@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
                                         listOf(Triple("playlist", "Playlist", Icons.AutoMirrored.Filled.QueueMusic))
                                     } else {
                                         listOf(
-                                            Triple("settings", "Settings", Icons.Default.Settings),
+                                            Triple("settings", "Config", Icons.Default.Settings),
                                             Triple("home", "Live", Icons.Default.MusicNote),
                                             Triple("playlist", "Playlist", Icons.AutoMirrored.Filled.QueueMusic),
                                             Triple("labs", "Labs", Icons.Default.Science),

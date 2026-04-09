@@ -320,7 +320,7 @@ fun MixStudioEditorScreen(
         }
     }
 
-    val currentProject = project ?: return
+    val currentProject = project
 
     Column(
         modifier = Modifier
@@ -333,8 +333,9 @@ fun MixStudioEditorScreen(
             IconButton(
                 onClick = {
                     scope.launch {
-                        if (nameField.text.isNotBlank()) {
-                            mixDao.update(currentProject.copy(name = nameField.text.trim()))
+                        val p = currentProject
+                        if (p != null && nameField.text.isNotBlank()) {
+                            mixDao.update(p.copy(name = nameField.text.trim()))
                         }
                     }
                     onBack()
@@ -366,7 +367,7 @@ fun MixStudioEditorScreen(
             onValueChange = {
                 if (it.text.length <= 30) {
                     nameField = it
-                    scope.launch { mixDao.update(currentProject.copy(name = it.text.trim().ifBlank { "My Mix" })) }
+                    scope.launch { currentProject?.let { p -> mixDao.update(p.copy(name = it.text.trim().ifBlank { "My Mix" })) } }
                 }
             },
             label = { Text("PROJECT NAME", fontFamily = SpaceGrotesk, fontSize = 11.sp, letterSpacing = 2.sp) },
@@ -713,14 +714,15 @@ fun MixStudioEditorScreen(
                 Surface(
                     onClick = {
                         scope.launch {
+                            val p = currentProject ?: return@launch
                             val label = "Pad ${NOTE_LABELS_MIX[padNote] ?: padNote} ${padMode.uppercase()}"
-                            val count = mixDao.getTrackCount(currentProject.id)
+                            val count = mixDao.getTrackCount(p.id)
                             val effectivePackId = if (padPackId == -1L) {
                                 allPacks.find { it.isDefault }?.id ?: -1L
                             } else padPackId
                             mixDao.insertTrack(
                                 MixTrack(
-                                    projectId = currentProject.id,
+                                    projectId = p.id,
                                     trackType = "pad",
                                     label = label,
                                     volume = defaultPadVolume,
@@ -909,11 +911,12 @@ fun MixStudioEditorScreen(
                 Surface(
                     onClick = {
                         scope.launch {
-                            val count = mixDao.getTrackCount(currentProject.id)
+                            val p = currentProject ?: return@launch
+                            val count = mixDao.getTrackCount(p.id)
                             val label = "Click ${clickBpm}bpm ${clickTimeSig}"
                             mixDao.insertTrack(
                                 MixTrack(
-                                    projectId = currentProject.id,
+                                    projectId = p.id,
                                     trackType = "click",
                                     label = label,
                                     volume = defaultClickVolume,

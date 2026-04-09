@@ -35,8 +35,10 @@ fun SettingsScreen(
     onClickChannelChange: (ClickChannel) -> Unit,
     onFadeInChange: (Long) -> Unit = {},
     onFadeOutChange: (Long) -> Unit = {},
-    onManagePacks: () -> Unit = {}
-) {
+    onManagePacks: () -> Unit = {},
+    tapTempoLongPress: Boolean = true,
+    onTapTempoLongPressChange: (Boolean) -> Unit = {}
+){
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -313,6 +315,50 @@ fun SettingsScreen(
                             contentDescription = "Manage",
                             tint = TextSecondary,
                             modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = PadBorder.copy(alpha = 0.3f), thickness = 1.dp)
+
+            // ─── SHORTCUTS Section ───
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "SHORTCUTS",
+                    fontSize = 13.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = PadIdle,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Long press BPM → Tap Tempo",
+                                fontSize = 14.sp,
+                                fontFamily = SpaceGrotesk,
+                                color = TextPrimary
+                            )
+                        }
+                        Switch(
+                            checked = tapTempoLongPress,
+                            onCheckedChange = onTapTempoLongPressChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = ClickTeal,
+                                checkedTrackColor = ClickTealDim,
+                                uncheckedThumbColor = TextSecondary,
+                                uncheckedTrackColor = PadIdle
+                            )
                         )
                     }
                 }

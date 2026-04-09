@@ -49,7 +49,8 @@ fun HomeScreen(
     onSelectPack: (Long) -> Unit = {},
     onManagePacks: () -> Unit = {},
     onBpmSet: (Int) -> Unit = {},
-) {
+    tapTempoLongPressEnabled: Boolean = true,
+){
     var showPackSheet by remember { mutableStateOf(false) }
     var showTapTempo by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -467,15 +468,17 @@ fun HomeScreen(
                 }
             }
 
-            // BPM text overlay centered over cols 2-3 — long press opens tap tempo
+            // BPM text overlay centered over cols 2-3 — long press opens tap tempo if enabled
             Box(
                 modifier = Modifier
                     .fillMaxWidth(2f / 3f)
                     .height(clickBtnHeight)
                     .align(Alignment.CenterEnd)
-                    .pointerInput(Unit) {
-                        detectTapGestures(onLongPress = { showTapTempo = true })
-                    },
+                    .then(
+                        if (tapTempoLongPressEnabled) Modifier.pointerInput(Unit) {
+                            detectTapGestures(onLongPress = { showTapTempo = true })
+                        } else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.Bottom) {

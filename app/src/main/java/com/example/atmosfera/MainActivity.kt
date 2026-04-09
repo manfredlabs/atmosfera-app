@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +38,7 @@ import com.example.atmosfera.model.PadChannel
 import com.example.atmosfera.model.availablePadsSet
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
+import com.example.atmosfera.screens.LabsScreen
 import com.example.atmosfera.screens.PlaylistScreen
 import com.example.atmosfera.screens.SettingsScreen
 import com.example.atmosfera.screens.SoundPackListScreen
@@ -71,7 +73,7 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route ?: "home"
-                val showBottomBar = currentRoute in listOf("home", "playlist", "settings", "pack_selector")
+                val showBottomBar = currentRoute in listOf("home", "playlist", "settings", "pack_selector", "labs")
                 val db = remember { AppDatabase.getInstance(this@MainActivity) }
                 val songDao = remember { db.songDao() }
                 val soundPackDao = remember { db.soundPackDao() }
@@ -117,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 var fadeInMs by remember { mutableStateOf(savedFadeIn) }
                 var fadeOutMs by remember { mutableStateOf(savedFadeOut) }
                 var playlistLocked by remember { mutableStateOf(false) }
+                var tapTempoLongPress by remember { mutableStateOf(prefs.getBoolean("tapTempoLongPress", true)) }
 
                 // Restore live values when navigating to home
                 LaunchedEffect(currentRoute) {
@@ -161,6 +164,7 @@ class MainActivity : ComponentActivity() {
                                             Triple("settings", "Settings", Icons.Default.Settings),
                                             Triple("home", "Live", Icons.Default.MusicNote),
                                             Triple("playlist", "Playlist", Icons.AutoMirrored.Filled.QueueMusic),
+                                            Triple("labs", "Labs", Icons.Default.Science),
                                         )
                                     }
                                     tabs.forEach { (route, label, icon) ->
@@ -200,7 +204,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    val tabOrder = mapOf("settings" to 0, "home" to 1, "playlist" to 2)
+                    val tabOrder = mapOf("settings" to 0, "home" to 1, "playlist" to 2, "labs" to 3)
                     fun routeIndex(route: String?): Int = tabOrder[route] ?: 99
 
                     NavHost(
@@ -331,7 +335,8 @@ class MainActivity : ComponentActivity() {
                                     if (clickEnabled) {
                                         audio.restartClick(newBpm, clickChannel, clickVolume, accents)
                                     }
-                                }
+                                },
+                                tapTempoLongPressEnabled = tapTempoLongPress
                             )
                         }
 
@@ -567,6 +572,32 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")
+                                },
+                                tapTempoLongPress = tapTempoLongPress,
+                                onTapTempoLongPressChange = {
+                                    tapTempoLongPress = it
+                                    prefs.edit().putBoolean("tapTempoLongPress", it).apply()
+                                }
+                            )
+                        }
+
+                        composable("labs") {
+                            LabsScreen(
+                                onApplyBpm = { newBpm ->
+                                    bpm = newBpm
+                                    liveBpm = newBpm
+                                    prefs.edit().putInt("liveBpm", newBpm).apply()
+                                    if (clickEnabled) {
+                                        audio.restartClick(newBpm, clickChannel, clickVolume, accents)
+                                    }
+                                    navController.navigate("home") {
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            inclusive = false
+                                            saveState = false
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = false
+                                    }
                                 }
                             )
                         }

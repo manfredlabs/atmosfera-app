@@ -164,7 +164,7 @@ private fun MixProjectCard(
             Icon(
                 Icons.Default.GraphicEq,
                 contentDescription = null,
-                tint = ClickTeal,
+                tint = LabsPurple,
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))

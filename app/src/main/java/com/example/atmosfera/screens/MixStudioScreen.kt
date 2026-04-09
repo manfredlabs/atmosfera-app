@@ -1,8 +1,12 @@
 package com.example.atmosfera.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,14 +21,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.example.atmosfera.data.MixProject
 import com.example.atmosfera.data.MixProjectDao
 import com.example.atmosfera.data.MixTrack
@@ -139,6 +147,7 @@ fun MixStudioListScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MixProjectCard(
     project: MixProject,
@@ -147,17 +156,72 @@ private fun MixProjectCard(
     onDelete: () -> Unit
 ) {
     val tracks by mixDao.getTracksForProject(project.id).collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = PadIdle,
-        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-        modifier = Modifier.fillMaxWidth()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val revealWidthPx = with(density) { 70.dp.toPx() }
+    val offsetX = remember { Animatable(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, PadBorder.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
     ) {
+        // Background delete button (revealed on swipe)
+        if (offsetX.value < -1f) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(DarkBg),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(70.dp)
+                        .background(PadIdle)
+                        .clickable {
+                            scope.launch { offsetX.animateTo(0f, tween(200)) }
+                            showDeleteConfirm = true
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFFF6B6B),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        // Foreground card (swipeable)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .background(PadIdle)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                val target = if (offsetX.value < -revealWidthPx / 2) -revealWidthPx else 0f
+                                offsetX.animateTo(target, tween(200))
+                            }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                val newValue = (offsetX.value + dragAmount).coerceIn(-revealWidthPx, 0f)
+                                offsetX.snapTo(newValue)
+                            }
+                        }
+                    )
+                }
+                .clickable { onClick() }
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -184,21 +248,64 @@ private fun MixProjectCard(
                     color = TextSecondary.copy(alpha = 0.6f)
                 )
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = TextSecondary.copy(alpha = 0.4f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = TextSecondary.copy(alpha = 0.4f),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+
+    // Delete confirmation bottom sheet
+    if (showDeleteConfirm) {
+        val deleteSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { showDeleteConfirm = false },
+            sheetState = deleteSheetState,
+            containerColor = PadIdle,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Delete \"${project.name}\"?",
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "This action cannot be undone.",
+                    fontFamily = SpaceGrotesk,
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, TextSecondary)
+                    ) { Text("CANCEL", fontFamily = SpaceGrotesk, fontSize = 13.sp, color = TextSecondary) }
+                    Button(
+                        onClick = { onDelete(); showDeleteConfirm = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
+                    ) { Text("DELETE", fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White) }
+                }
+            }
         }
     }
 }

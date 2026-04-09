@@ -107,14 +107,19 @@ fun TapTempoScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "TAP TEMPO",
-            fontSize = 13.sp,
-            fontFamily = SpaceGrotesk,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-            color = TextSecondary
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "TAP TEMPO",
+                fontSize = 22.sp,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 6.sp,
+                color = TextSecondary
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 

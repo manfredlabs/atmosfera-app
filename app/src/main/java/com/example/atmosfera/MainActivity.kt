@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                 // Live screen state (persisted)
                 var liveBpm by remember { mutableIntStateOf(prefs.getInt("liveBpm", 90)) }
                 var liveAccents by remember { mutableStateOf(
-                    prefs.getString("liveAccents", "1,0,0,0")!!.split(",").map { it.toInt() }
+                    prefs.getString("liveAccents", "1,0,0,0")!!.split(",").map { it.toIntOrNull() ?: if (it == "true") 1 else 0 }
                 ) }
                 var livePadMode by remember { mutableStateOf(prefs.getString("livePadMode", "maj")!!) }
 
@@ -126,10 +126,14 @@ class MainActivity : ComponentActivity() {
                 // Restore live values when navigating to home
                 LaunchedEffect(currentRoute) {
                     if (currentRoute == "home") {
+                        val accentsChanged = accents != liveAccents
                         bpm = liveBpm
                         accents = liveAccents
                         padMode = livePadMode
                         audio.currentAccents = liveAccents
+                        if (clickEnabled && accentsChanged) {
+                            audio.restartClick(bpm, clickChannel, clickVolume, accents)
+                        }
                     }
                 }
 
@@ -618,12 +622,10 @@ class MainActivity : ComponentActivity() {
                                         audio.restartClick(newBpm, clickChannel, clickVolume, accents)
                                     }
                                     navController.navigate("home") {
-                                        popUpTo(navController.graph.startDestinationId) {
+                                        popUpTo("labs") {
                                             inclusive = false
-                                            saveState = false
                                         }
                                         launchSingleTop = true
-                                        restoreState = false
                                     }
                                 }
                             )

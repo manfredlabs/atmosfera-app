@@ -64,6 +64,13 @@ fun AddSongScreen(
     var padMode by remember { mutableStateOf(livePadMode) }
     var bpm by remember { mutableIntStateOf(liveBpm) }
     var accents by remember { mutableStateOf(liveAccents) }
+    var timeSignature by remember {
+        val beats = liveAccents.size
+        val sig = when (beats) {
+            2 -> "2/4"; 3 -> "3/4"; 5 -> "5/4"; 6 -> "6/4"; 7 -> "7/4"; else -> "4/4"
+        }
+        mutableStateOf(sig)
+    }
     var clickEnabled by remember { mutableStateOf(liveClickEnabled) }
     var selectedPackId by remember { mutableStateOf(currentPackId) }
     var showPackSheet by remember { mutableStateOf(false) }
@@ -183,6 +190,9 @@ fun AddSongScreen(
                 padMode = s.padMode
                 bpm = s.bpm
                 accents = s.accentList()
+                timeSignature = when (accents.size) {
+                    2 -> "2/4"; 3 -> "3/4"; 5 -> "5/4"; 6 -> "6/4"; 7 -> "7/4"; else -> "4/4"
+                }
                 clickEnabled = s.clickEnabled
                 selectedPackId = if (s.soundPackId == -1L) currentPackId else s.soundPackId
                 nameInitialized = true
@@ -499,6 +509,55 @@ fun AddSongScreen(
                             color = if (clickEnabled) ClickTeal.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.4f),
                             modifier = Modifier.padding(bottom = 3.dp)
                         )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Time Signature selector
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
+                signatures.forEach { sig ->
+                    val isSelected = timeSignature == sig
+                    Surface(
+                        onClick = {
+                            timeSignature = sig
+                            val beats = sig.substringBefore("/").toInt()
+                            accents = List(beats) { if (it == 0) 1 else 0 }
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        color = when {
+                            isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
+                            isSelected -> PadActive
+                            else -> PadIdle
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            when {
+                                isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
+                                isSelected -> PadBorder.copy(alpha = 0.8f)
+                                else -> PadBorder.copy(alpha = 0.3f)
+                            }
+                        ),
+                        modifier = Modifier.weight(1f).height(30.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = sig,
+                                fontSize = 11.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = when {
+                                    isSelected && clickEnabled -> ClickTeal
+                                    isSelected -> TextPrimary
+                                    else -> TextSecondary.copy(alpha = 0.6f)
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -9,16 +9,27 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Piano
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -50,7 +61,11 @@ fun AddSongScreen(
     liveAccents: List<Int> = listOf(1, 0, 0, 0),
     liveClickEnabled: Boolean = true,
     livePadMode: String = "maj",
-    liveNote: String = "c"
+    liveNote: String = "c",
+    livePadVolume: Float = 0.5f,
+    livePadChannel: String = "mono",
+    liveClickVolume: Float = 0.5f,
+    liveClickChannel: String = "mono"
 ) {
     val songs by songDao.getAll().collectAsState(initial = null)
     var editSong by remember { mutableStateOf<Song?>(null) }
@@ -72,6 +87,10 @@ fun AddSongScreen(
         mutableStateOf(sig)
     }
     var clickEnabled by remember { mutableStateOf(liveClickEnabled) }
+    var padVolume by remember { mutableFloatStateOf(livePadVolume) }
+    var padChannel by remember { mutableStateOf(livePadChannel) }
+    var clickVolume by remember { mutableFloatStateOf(liveClickVolume) }
+    var clickChannel by remember { mutableStateOf(liveClickChannel) }
     var selectedPackId by remember { mutableStateOf(currentPackId) }
     var showPackSheet by remember { mutableStateOf(false) }
 
@@ -194,6 +213,10 @@ fun AddSongScreen(
                     2 -> "2/4"; 3 -> "3/4"; 5 -> "5/4"; 6 -> "6/4"; 7 -> "7/4"; else -> "4/4"
                 }
                 clickEnabled = s.clickEnabled
+                padVolume = s.padVolume
+                padChannel = s.padChannel
+                clickVolume = s.clickVolume
+                clickChannel = s.clickChannel
                 selectedPackId = if (s.soundPackId == -1L) currentPackId else s.soundPackId
                 nameInitialized = true
             }
@@ -411,6 +434,18 @@ fun AddSongScreen(
             }
         }
 
+        // ─── Pad Routing ───
+        SongTrackCard(
+            label = "PAD",
+            icon = Icons.Default.Piano,
+            accentColor = LedAmber,
+            accentDimColor = LedAmberDim,
+            volume = padVolume,
+            channel = padChannel,
+            onVolumeChange = { padVolume = it },
+            onChannelChange = { padChannel = it }
+        )
+
         // ─── Click ───
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
@@ -422,141 +457,164 @@ fun AddSongScreen(
                 color = TextSecondary
             )
 
-            // CLICK (col 1) + − (col 2) + + (col 3), BPM overlay
+            // CLICK toggle — full row when off, 3-col with BPM when on
             val clickBtnHeight = 36.dp
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Col 1: CLICK ON/OFF
+            AnimatedContent(
+                targetState = clickEnabled,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "clickToggle"
+            ) { enabled ->
+                if (!enabled) {
+                    // Full-width OFF button
                     Surface(
-                        onClick = { clickEnabled = !clickEnabled },
+                        onClick = { clickEnabled = true },
                         shape = RoundedCornerShape(8.dp),
-                        color = if (clickEnabled) ClickTeal.copy(alpha = 0.15f) else PadIdle,
-                        border = BorderStroke(
-                            1.dp,
-                            if (clickEnabled) ClickTeal else PadBorder.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier.weight(1f).height(clickBtnHeight)
+                        color = PadIdle,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth().height(clickBtnHeight)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Text(
-                                if (clickEnabled) "CLICK ON" else "CLICK OFF",
+                                "CLICK OFF  —  TAP TO ENABLE",
                                 fontSize = 13.sp,
                                 fontFamily = SpaceGrotesk,
                                 fontWeight = FontWeight.Bold,
-                                color = if (clickEnabled) ClickTeal else TextSecondary
+                                color = TextSecondary.copy(alpha = 0.5f)
                             )
                         }
                     }
-
-                    // Col 2: − button at start
-                    Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
-                        val atMin = bpm <= 30
-                        Surface(
-                            onClick = { if (!atMin) bpm = bpm - 1 },
-                            shape = RoundedCornerShape(8.dp),
-                            color = PadIdle,
-                            border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
-                            modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                } else {
+                    // 3-col layout: [CLICK ON] [−] [+] with BPM overlay
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                            Surface(
+                                onClick = { clickEnabled = false },
+                                shape = RoundedCornerShape(8.dp),
+                                color = ClickTeal.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, ClickTeal),
+                                modifier = Modifier.weight(1f).height(clickBtnHeight)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text("CLICK ON", fontSize = 13.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = ClickTeal)
+                                }
+                            }
+                            Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
+                                val atMin = bpm <= 30
+                                Surface(
+                                    onClick = { if (!atMin) bpm = bpm - 1 },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PadIdle,
+                                    border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
+                                    modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                                    }
+                                }
+                            }
+                            Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
+                                val atMax = bpm >= 240
+                                Surface(
+                                    onClick = { if (!atMax) bpm = bpm + 1 },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PadIdle,
+                                    border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
+                                    modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    // Col 3: + button at end
-                    Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
-                        val atMax = bpm >= 240
-                        Surface(
-                            onClick = { if (!atMax) bpm = bpm + 1 },
-                            shape = RoundedCornerShape(8.dp),
-                            color = PadIdle,
-                            border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
-                            modifier = Modifier.width(44.dp).height(clickBtnHeight)
+                        // BPM overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(2f / 3f)
+                                .height(clickBtnHeight)
+                                .align(Alignment.CenterEnd),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text("$bpm", fontSize = 24.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = ClickTeal)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("BPM", fontSize = 10.sp, fontFamily = SpaceGrotesk, color = ClickTeal.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 3.dp))
                             }
                         }
-                    }
-                }
-
-                // BPM text overlay centered over cols 2-3
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(2f / 3f)
-                        .height(clickBtnHeight)
-                        .align(Alignment.CenterEnd),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            "$bpm",
-                            fontSize = 24.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = if (clickEnabled) ClickTeal else TextSecondary
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            "BPM",
-                            fontSize = 10.sp,
-                            fontFamily = SpaceGrotesk,
-                            color = if (clickEnabled) ClickTeal.copy(alpha = 0.5f) else TextSecondary.copy(alpha = 0.4f),
-                            modifier = Modifier.padding(bottom = 3.dp)
-                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Time Signature selector
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            AnimatedVisibility(
+                visible = clickEnabled,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+            // Time Signature selector
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "TIME SIGNATURE",
+                    fontSize = 12.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    color = TextSecondary
+                )
                 val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
-                signatures.forEach { sig ->
-                    val isSelected = timeSignature == sig
-                    Surface(
-                        onClick = {
-                            timeSignature = sig
-                            val beats = sig.substringBefore("/").toInt()
-                            accents = List(beats) { if (it == 0) 1 else 0 }
-                        },
-                        shape = RoundedCornerShape(6.dp),
-                        color = when {
-                            isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
-                            isSelected -> PadActive
-                            else -> PadIdle
-                        },
-                        border = BorderStroke(
-                            1.dp,
-                            when {
-                                isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
-                                isSelected -> PadBorder.copy(alpha = 0.8f)
-                                else -> PadBorder.copy(alpha = 0.3f)
-                            }
-                        ),
-                        modifier = Modifier.weight(1f).height(30.dp)
+                signatures.chunked(4).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text(
-                                text = sig,
-                                fontSize = 11.sp,
-                                fontFamily = SpaceGrotesk,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        row.forEach { sig ->
+                            val isSelected = timeSignature == sig
+                            Surface(
+                                onClick = {
+                                    timeSignature = sig
+                                    val beats = sig.substringBefore("/").toInt()
+                                    accents = List(beats) { if (it == 0) 1 else 0 }
+                                },
+                                shape = RoundedCornerShape(8.dp),
                                 color = when {
-                                    isSelected && clickEnabled -> ClickTeal
-                                    isSelected -> TextPrimary
-                                    else -> TextSecondary.copy(alpha = 0.6f)
+                                    isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
+                                    isSelected -> PadActive
+                                    else -> PadIdle
+                                },
+                                border = BorderStroke(
+                                    1.dp,
+                                    when {
+                                        isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
+                                        isSelected -> PadBorder.copy(alpha = 0.8f)
+                                        else -> PadBorder.copy(alpha = 0.3f)
+                                    }
+                                ),
+                                modifier = Modifier.weight(1f).height(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text(
+                                        text = sig,
+                                        fontSize = 14.sp,
+                                        fontFamily = SpaceGrotesk,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = when {
+                                            isSelected && clickEnabled -> ClickTeal
+                                            isSelected -> TextPrimary
+                                            else -> TextSecondary.copy(alpha = 0.7f)
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -615,6 +673,20 @@ fun AddSongScreen(
                     }
                 }
             }
+
+            // Click routing (only when click enabled)
+                SongTrackCard(
+                    label = "CLICK",
+                    icon = Icons.Default.Timer,
+                    accentColor = ClickTeal,
+                    accentDimColor = ClickTealDim,
+                    volume = clickVolume,
+                    channel = clickChannel,
+                    onVolumeChange = { clickVolume = it },
+                    onChannelChange = { clickChannel = it }
+                )
+                } // end AnimatedVisibility Column
+            } // end AnimatedVisibility
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -657,7 +729,11 @@ fun AddSongScreen(
                                         accents = Song.accentsToString(accents),
                                         clickEnabled = clickEnabled,
                                         padMode = padMode,
-                                        soundPackId = selectedPackId
+                                        soundPackId = selectedPackId,
+                                        padVolume = padVolume,
+                                        padChannel = padChannel,
+                                        clickVolume = clickVolume,
+                                        clickChannel = clickChannel
                                     )
                                 )
                             } else {
@@ -670,7 +746,11 @@ fun AddSongScreen(
                                         accents = Song.accentsToString(accents),
                                         clickEnabled = clickEnabled,
                                         padMode = padMode,
-                                        soundPackId = selectedPackId
+                                        soundPackId = selectedPackId,
+                                        padVolume = padVolume,
+                                        padChannel = padChannel,
+                                        clickVolume = clickVolume,
+                                        clickChannel = clickChannel
                                     )
                                 )
                             }
@@ -697,6 +777,95 @@ fun AddSongScreen(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongTrackCard(
+    label: String,
+    icon: ImageVector,
+    accentColor: Color,
+    accentDimColor: Color,
+    volume: Float,
+    channel: String,
+    onVolumeChange: (Float) -> Unit,
+    onChannelChange: (String) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(PadIdle)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                ) {
+                    Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = label,
+                    fontSize = 15.sp,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().height(32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = volume,
+                    onValueChange = onVolumeChange,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = accentColor,
+                        activeTrackColor = accentDimColor,
+                        inactiveTrackColor = PadBorder
+                    )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("left" to "L", "mono" to "M", "right" to "R").forEach { (ch, chLabel) ->
+                        val sel = channel == ch
+                        Surface(
+                            onClick = { onChannelChange(ch) },
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (sel) accentColor.copy(alpha = 0.2f) else Color.Transparent,
+                            border = BorderStroke(1.dp, if (sel) accentColor else PadBorder.copy(alpha = 0.3f)),
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text(
+                                    text = chLabel,
+                                    fontSize = 11.sp,
+                                    fontFamily = SpaceGrotesk,
+                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (sel) accentColor else TextSecondary.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

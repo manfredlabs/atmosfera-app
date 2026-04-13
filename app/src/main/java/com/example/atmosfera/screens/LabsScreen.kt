@@ -48,31 +48,38 @@ fun LabsScreen(
         // Tap Tempo card
         Surface(
             onClick = onNavigateToTapTempo,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = PadIdle,
             border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth().height(70.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Default.TouchApp,
-                    contentDescription = null,
-                    tint = LabsPurple,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(LabsPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                ) {
+                    Icon(
+                        Icons.Default.TouchApp,
+                        contentDescription = null,
+                        tint = LabsPurple,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Tap Tempo",
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = TextPrimary
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = "Find BPM by tapping",
                         fontSize = 13.sp,
@@ -92,31 +99,38 @@ fun LabsScreen(
         // Mix Studio card
         Surface(
             onClick = onNavigateToMixStudio,
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(12.dp),
             color = PadIdle,
             border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-            modifier = Modifier.fillMaxWidth().height(70.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Default.Headphones,
-                    contentDescription = null,
-                    tint = LabsPurple,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(LabsPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                ) {
+                    Icon(
+                        Icons.Default.Headphones,
+                        contentDescription = null,
+                        tint = LabsPurple,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Mix Studio",
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = TextPrimary
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = "Multi-track mixer",
                         fontSize = 13.sp,

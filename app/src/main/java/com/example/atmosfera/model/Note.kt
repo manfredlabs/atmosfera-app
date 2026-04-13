@@ -19,6 +19,18 @@ data class Note(
 enum class ClickChannel(val label: String) { LEFT("L"), MONO("M"), RIGHT("R") }
 enum class PadChannel(val label: String) { LEFT("L"), MONO("M"), RIGHT("R") }
 
+fun String.toPadChannel(): PadChannel = when (this.lowercase()) {
+    "left" -> PadChannel.LEFT
+    "right" -> PadChannel.RIGHT
+    else -> PadChannel.MONO
+}
+
+fun String.toClickChannel(): ClickChannel = when (this.lowercase()) {
+    "left" -> ClickChannel.LEFT
+    "right" -> ClickChannel.RIGHT
+    else -> ClickChannel.MONO
+}
+
 val ALL_NOTES = listOf(
     Note("c", "C", "pad_c_neu", "pad_c_maj", "pad_c_min"),
     Note("cs", "C#", "pad_cs_neu", "pad_cs_maj", "pad_cs_min"),

@@ -25,10 +25,17 @@ import com.example.atmosfera.data.MixTrack
 class MixAudioEngine(private val context: Context) {
 
     private val handler = Handler(Looper.getMainLooper())
+    private val fadeHandler = Handler(Looper.getMainLooper())
 
     // ExoPlayer instances keyed by track ID (for pad and custom tracks)
     private val players = mutableMapOf<Long, ExoPlayer>()
     private val mixers = mutableMapOf<Long, ChannelMixingAudioProcessor>()
+    private val padTrackIds = mutableSetOf<Long>()
+
+    // Fade settings (set from Settings via MainActivity)
+    @Volatile var fadeInMs = 2000L
+    @Volatile var fadeOutMs = 1500L
+    private val fadeSteps = 30
 
     // Click track state (only one click track at a time)
     private var clickTrackId: Long? = null
@@ -39,8 +46,23 @@ class MixAudioEngine(private val context: Context) {
     private var accentSoundId: Int = 0
     @Volatile private var soundPoolReady = false
 
+    // Live-updatable click volume (updated by setTrackVolume)
+    @Volatile private var clickVolLeft: Float = 0.5f
+    @Volatile private var clickVolRight: Float = 0.5f
+    @Volatile private var clickChannel: String = "mono"
+
     /** Observable playing state per track: trackId → isPlaying */
     val trackPlaying = mutableStateMapOf<Long, Boolean>()
+
+    /** Muted tracks: trackId → muted — track keeps running but silenced */
+    val mutedTracks = mutableStateMapOf<Long, Boolean>()
+
+    /** Stored volume for muted tracks so we can restore on unmute */
+    private val mutedVolumes = mutableMapOf<Long, Float>()
+
+    /** Whether playback is paused (custom tracks hold position) */
+    @Volatile var isPaused = false
+        private set
 
     fun init(clickResId: Int, accentResId: Int) {
         val attrs = AudioAttributes.Builder()
@@ -60,12 +82,24 @@ class MixAudioEngine(private val context: Context) {
 
     @OptIn(UnstableApi::class)
     fun startTrack(track: MixTrack) {
-        when (track.trackType) {
+        val started = when (track.trackType) {
             "pad" -> startPadTrack(track)
             "custom" -> startCustomTrack(track)
             "click" -> startClickTrack(track)
+            else -> false
         }
-        trackPlaying[track.id] = true
+        if (started) {
+            trackPlaying[track.id] = true
+            // Re-apply mute if track was muted before restart
+            if (mutedTracks[track.id] == true) {
+                players[track.id]?.let { player ->
+                    if (!mutedVolumes.containsKey(track.id)) {
+                        mutedVolumes[track.id] = track.volume
+                    }
+                    player.volume = 0f
+                }
+            }
+        }
     }
 
     fun stopTrack(trackId: Long) {
@@ -74,32 +108,159 @@ class MixAudioEngine(private val context: Context) {
             stopClickInternal()
         }
         // Check if it's an ExoPlayer track
-        players[trackId]?.let {
-            try { it.stop(); it.release() } catch (_: Exception) {}
-            players.remove(trackId)
+        players.remove(trackId)?.let { player ->
             mixers.remove(trackId)
+            if (trackId in padTrackIds) {
+                padTrackIds.remove(trackId)
+                // Cancel any pending fades for this track
+                try { player.stop(); player.release() } catch (_: Exception) {}
+            } else {
+                try { player.stop(); player.release() } catch (_: Exception) {}
+            }
         }
         trackPlaying[trackId] = false
     }
 
+    private fun fadeOutPlayer(trackId: Long, player: ExoPlayer) {
+        val targetVolume = player.volume
+        val stepDelay = fadeOutMs / fadeSteps
+        for (i in 1..fadeSteps) {
+            fadeHandler.postDelayed({
+                try {
+                    val fraction = 1f - i.toFloat() / fadeSteps
+                    player.volume = fraction * fraction * targetVolume
+                } catch (_: Exception) {}
+            }, i * stepDelay)
+        }
+        fadeHandler.postDelayed({
+            try { player.stop(); player.release() } catch (_: Exception) {}
+            players.remove(trackId)
+            mixers.remove(trackId)
+            padTrackIds.remove(trackId)
+        }, fadeOutMs + 50)
+    }
+
     fun startAll(tracks: List<MixTrack>) {
+        isPaused = false
         tracks.forEach { startTrack(it) }
     }
 
     fun stopAll() {
+        isPaused = false
+        fadeHandler.removeCallbacksAndMessages(null)
         val ids = players.keys.toList()
         ids.forEach { stopTrack(it) }
         clickTrackId?.let { stopTrack(it) }
+        trackPlaying.clear()
+    }
+
+    /** Pause custom tracks (hold position), stop pads & clicks */
+    fun pauseAll() {
+        isPaused = true
+        // Pause custom ExoPlayers (keep position)
+        players.forEach { (id, player) ->
+            if (id !in padTrackIds) {
+                player.pause()
+                trackPlaying[id] = false
+            }
+        }
+        // Stop pads (they loop, no position to hold)
+        val padIds = padTrackIds.toList()
+        padIds.forEach { stopTrack(it) }
+        // Stop click
+        clickTrackId?.let { stopTrack(it) }
+    }
+
+    /** Resume paused custom tracks, restart pads & clicks */
+    fun resumeAll(allTracks: List<MixTrack>) {
+        isPaused = false
+        // Resume custom ExoPlayers that are still in the map
+        val customIds = players.keys.filter { it !in padTrackIds }.toList()
+        customIds.forEach { id ->
+            players[id]?.let { player ->
+                try {
+                    player.play()
+                    trackPlaying[id] = true
+                } catch (_: Exception) {
+                    // Player was released, remove it
+                    players.remove(id)
+                    mixers.remove(id)
+                }
+            }
+        }
+        // Restart pads & clicks
+        allTracks.filter { it.trackType == "pad" || it.trackType == "click" }.forEach {
+            startTrack(it)
+        }
+    }
+
+    /** Seek all custom tracks to the given position */
+    fun seekAllCustom(positionMs: Long) {
+        val safePos = positionMs.coerceAtLeast(0)
+        players.forEach { (id, player) ->
+            if (id !in padTrackIds) {
+                try { player.seekTo(safePos) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    /** Get the max duration among all custom tracks (ms), or 0 */
+    fun getCustomDurationMs(): Long {
+        return players.filter { it.key !in padTrackIds }
+            .values.maxOfOrNull { it.duration.coerceAtLeast(0) } ?: 0L
+    }
+
+    /** Get the current position of the first custom track (ms), or 0 */
+    fun getCustomPositionMs(): Long {
+        return players.filter { it.key !in padTrackIds }
+            .values.firstOrNull()?.currentPosition?.coerceAtLeast(0) ?: 0L
+    }
+
+    /** Check if there are any active custom track players */
+    fun hasCustomTracks(): Boolean {
+        return players.any { it.key !in padTrackIds }
     }
 
     fun setTrackVolume(trackId: Long, volume: Float) {
-        players[trackId]?.volume = volume
+        if (trackId == clickTrackId) {
+            val (l, r) = channelVolumes(clickChannel, volume)
+            clickVolLeft = l
+            clickVolRight = r
+            if (trackId in mutedTracks) mutedVolumes[trackId] = volume
+            return
+        }
+        if (trackId in mutedTracks) {
+            mutedVolumes[trackId] = volume
+        } else {
+            players[trackId]?.volume = volume
+        }
+    }
+
+    fun muteTrack(trackId: Long) {
+        if (mutedTracks[trackId] == true) return
+        mutedTracks[trackId] = true
+        // ExoPlayer tracks: save current volume, set to 0
+        players[trackId]?.let { player ->
+            mutedVolumes[trackId] = player.volume
+            player.volume = 0f
+        }
+        // Click track: volume is applied per-tick via isMuted check
+    }
+
+    fun unmuteTrack(trackId: Long) {
+        if (mutedTracks[trackId] != true) return
+        mutedTracks.remove(trackId)
+        // ExoPlayer tracks: restore volume
+        players[trackId]?.let { player ->
+            player.volume = mutedVolumes.remove(trackId) ?: 0.5f
+        }
+        mutedVolumes.remove(trackId)
     }
 
     // ── Pad track (ExoPlayer, looping) ──────────────────────────────────
 
     @OptIn(UnstableApi::class)
-    private fun startPadTrack(track: MixTrack) {
+    private fun startPadTrack(track: MixTrack): Boolean {
         stopTrack(track.id)
 
         val uri = if (track.soundPackId == null || track.soundPackId <= 0L) {
@@ -107,28 +268,45 @@ class MixAudioEngine(private val context: Context) {
             val mode = track.padMode ?: "neu"
             val resName = "pad_${note}_${mode}"
             val resId = context.resources.getIdentifier(resName, "raw", context.packageName)
-            if (resId == 0) return
+            if (resId == 0) return false
             "android.resource://${context.packageName}/$resId"
         } else {
-            track.filePath?.let { "file://$it" } ?: return
+            track.filePath?.let { "file://$it" } ?: return false
         }
 
         val (mixer, player) = createPlayer(uri, track)
         player.repeatMode = Player.REPEAT_MODE_ONE
+        player.volume = 0f
         player.prepare()
         player.play()
 
         players[track.id] = player
         mixers[track.id] = mixer
+        padTrackIds.add(track.id)
+
+        // Fade in (skip if muted)
+        val targetVolume = track.volume
+        if (mutedTracks[track.id] != true) {
+            val stepDelay = fadeInMs / fadeSteps
+            for (i in 1..fadeSteps) {
+                fadeHandler.postDelayed({
+                    if (players[track.id] == player && mutedTracks[track.id] != true) {
+                        val fraction = i.toFloat() / fadeSteps
+                        player.volume = fraction * fraction * targetVolume
+                    }
+                }, i * stepDelay)
+            }
+        }
+        return true
     }
 
     // ── Custom audio track (ExoPlayer, plays once) ──────────────────────
 
     @OptIn(UnstableApi::class)
-    private fun startCustomTrack(track: MixTrack) {
+    private fun startCustomTrack(track: MixTrack): Boolean {
         stopTrack(track.id)
 
-        val path = track.filePath ?: return
+        val path = track.filePath ?: return false
         val uri = "file://$path"
 
         val (mixer, player) = createPlayer(uri, track)
@@ -137,6 +315,10 @@ class MixAudioEngine(private val context: Context) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED) {
                     trackPlaying[track.id] = false
+                    players.remove(track.id)?.let {
+                        try { it.release() } catch (_: Exception) {}
+                    }
+                    mixers.remove(track.id)
                 }
             }
         })
@@ -145,13 +327,14 @@ class MixAudioEngine(private val context: Context) {
 
         players[track.id] = player
         mixers[track.id] = mixer
+        return true
     }
 
     // ── Click track (SoundPool + Handler, looping) ──────────────────────
 
-    private fun startClickTrack(track: MixTrack) {
+    private fun startClickTrack(track: MixTrack): Boolean {
         stopTrack(track.id)
-        if (!soundPoolReady) return
+        if (!soundPoolReady) return false
 
         clickTrackId = track.id
         isClickRunning = true
@@ -159,25 +342,29 @@ class MixAudioEngine(private val context: Context) {
         val accents = track.accents?.split(",")?.map {
             it.toIntOrNull() ?: 0
         } ?: listOf(1, 0, 0, 0)
-        val volume = track.volume
         val interval = 60000L / bpm
         var beatIndex = 0
 
-        val (leftVol, rightVol) = channelVolumes(track.channel, volume)
+        val (initLeft, initRight) = channelVolumes(track.channel, track.volume)
+        clickVolLeft = initLeft
+        clickVolRight = initRight
+        clickChannel = track.channel ?: "mono"
 
         clickRunnable = object : Runnable {
             override fun run() {
                 if (!isClickRunning) return
                 val beatState = accents[beatIndex % accents.size]
-                if (beatState != 2) {
+                val isMuted = clickTrackId != null && clickTrackId in mutedTracks
+                if (beatState != 2 && !isMuted) {
                     val soundId = if (beatState == 1) accentSoundId else clickSoundId
-                    soundPool.play(soundId, leftVol, rightVol, 1, 0, 1f)
+                    soundPool.play(soundId, clickVolLeft, clickVolRight, 1, 0, 1f)
                 }
                 beatIndex = (beatIndex + 1) % accents.size
                 handler.postDelayed(this, interval)
             }
         }
         handler.post(clickRunnable!!)
+        return true
     }
 
     private fun stopClickInternal() {
@@ -248,6 +435,7 @@ class MixAudioEngine(private val context: Context) {
     fun isAnyPlaying(): Boolean = trackPlaying.values.any { it }
 
     fun release() {
+        fadeHandler.removeCallbacksAndMessages(null)
         stopAll()
         if (soundPoolReady) soundPool.release()
     }

@@ -281,54 +281,55 @@ fun SettingsScreen(
                 }
 
                 // Time Signature
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Time",
+                        text = "Time Signature",
                         fontSize = 13.sp,
                         fontFamily = SpaceGrotesk,
-                        color = TextSecondary,
-                        modifier = Modifier.width(60.dp)
+                        color = TextSecondary
                     )
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
-                        signatures.forEach { sig ->
-                            val isSelected = timeSignature == sig
-                            Surface(
-                                onClick = { onTimeSignatureChange(sig) },
-                                shape = RoundedCornerShape(6.dp),
-                                color = when {
-                                    isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
-                                    isSelected -> PadActive
-                                    else -> PadIdle
-                                },
-                                border = BorderStroke(
-                                    1.dp,
-                                    when {
-                                        isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
-                                        isSelected -> PadBorder.copy(alpha = 0.8f)
-                                        else -> PadBorder.copy(alpha = 0.3f)
-                                    }
-                                ),
-                                modifier = Modifier.weight(1f).height(32.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Text(
-                                        text = sig,
-                                        fontSize = 11.sp,
-                                        fontFamily = SpaceGrotesk,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = when {
-                                            isSelected && clickEnabled -> ClickTeal
-                                            isSelected -> TextPrimary
-                                            else -> TextSecondary.copy(alpha = 0.6f)
+                    val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
+                    signatures.chunked(4).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            row.forEach { sig ->
+                                val isSelected = timeSignature == sig
+                                Surface(
+                                    onClick = { onTimeSignatureChange(sig) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = when {
+                                        isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
+                                        isSelected -> PadActive
+                                        else -> PadIdle
+                                    },
+                                    border = BorderStroke(
+                                        1.dp,
+                                        when {
+                                            isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
+                                            isSelected -> PadBorder.copy(alpha = 0.8f)
+                                            else -> PadBorder.copy(alpha = 0.3f)
                                         }
-                                    )
+                                    ),
+                                    modifier = Modifier.weight(1f).height(44.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Text(
+                                            text = sig,
+                                            fontSize = 14.sp,
+                                            fontFamily = SpaceGrotesk,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = when {
+                                                isSelected && clickEnabled -> ClickTeal
+                                                isSelected -> TextPrimary
+                                                else -> TextSecondary.copy(alpha = 0.7f)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

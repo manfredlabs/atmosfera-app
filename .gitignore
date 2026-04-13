@@ -13,3 +13,7 @@ keystore.properties
 *.jks
 
 .kotlin/
+
+# Hidden test project
+_stems/
+.agents

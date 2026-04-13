@@ -39,10 +39,14 @@ import com.example.atmosfera.model.ALL_NOTES
 import com.example.atmosfera.model.ClickChannel
 import com.example.atmosfera.model.PadChannel
 import com.example.atmosfera.model.availablePadsSet
+import com.example.atmosfera.model.toPadChannel
+import com.example.atmosfera.model.toClickChannel
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
 import com.example.atmosfera.screens.LabsScreen
 import com.example.atmosfera.screens.MixStudioEditorScreen
+import com.example.atmosfera.screens.MixEditorDefaults
+import com.example.atmosfera.screens.MixEditorCallbacks
 import com.example.atmosfera.screens.MixStudioListScreen
 import com.example.atmosfera.screens.TapTempoScreen
 import com.example.atmosfera.screens.PlaylistScreen
@@ -77,6 +81,8 @@ class MainActivity : ComponentActivity() {
         audio.padTargetVolume = savedPadVolume
         audio.fadeInMs = savedFadeIn
         audio.fadeOutMs = savedFadeOut
+        mixAudio.fadeInMs = savedFadeIn
+        mixAudio.fadeOutMs = savedFadeOut
 
         setContent {
             AtmosferaTheme {
@@ -112,6 +118,7 @@ class MainActivity : ComponentActivity() {
                 var playingNote by remember { mutableStateOf<String?>(null) }
                 var playingSongId by remember { mutableStateOf<Long?>(null) }
                 var playingMixId by remember { mutableStateOf<Long?>(null) }
+                var isMixPausedState by remember { mutableStateOf(false) }
 
                 // Live screen state (persisted)
                 var liveBpm by remember { mutableIntStateOf(prefs.getInt("liveBpm", 90)) }
@@ -138,6 +145,7 @@ class MainActivity : ComponentActivity() {
                 // Mix Studio state
                 var pendingAudioUri by remember { mutableStateOf<String?>(null) }
                 var pendingAudioName by remember { mutableStateOf<String?>(null) }
+                var activeEditorProjectId by remember { mutableStateOf(0L) }
 
                 // File picker for Mix Studio custom audio
                 val audioPickerLauncher = rememberLauncherForActivityResult(
@@ -150,19 +158,14 @@ class MainActivity : ComponentActivity() {
                         val displayName = if (nameIndex != null && nameIndex >= 0) cursor?.getString(nameIndex) else "Audio"
                         cursor?.close()
 
-                        // Get current editor project ID from nav
-                        val editorRoute = navController.currentBackStackEntry?.destination?.route
-                        val projectIdStr = navController.currentBackStackEntry?.arguments?.getString("projectId")
-                        val projectId = projectIdStr?.toLongOrNull() ?: 0L
-
-                        if (projectId > 0L) {
+                        val projId = activeEditorProjectId
+                        if (projId > 0L) {
                             scope.launch {
-                                val count = mixProjectDao.getTrackCount(projectId)
+                                val count = mixProjectDao.getTrackCount(projId)
                                 if (count < 6) {
-                                    // Copy file to internal storage
                                     val trackId = System.currentTimeMillis()
                                     val internalPath = mixFileManager.copyAudioToStorage(
-                                        projectId, trackId, uri, displayName ?: "audio"
+                                        projId, trackId, uri, displayName ?: "audio"
                                     )
                                     pendingAudioUri = internalPath
                                     pendingAudioName = displayName ?: "Audio"
@@ -469,6 +472,9 @@ class MainActivity : ComponentActivity() {
                                         accents = song.accentList()
                                         audio.currentAccents = accents
 
+                                        val songPadChannel = song.padChannel.toPadChannel()
+                                        val songClickChannel = song.clickChannel.toClickChannel()
+
                                         val songPack = if (song.soundPackId > 0) song.soundPackId else currentPackId
                                         if (songPack != currentPackId) {
                                             currentPackId = songPack
@@ -478,23 +484,26 @@ class MainActivity : ComponentActivity() {
                                         if (note != null) {
                                             val defaultPack = allPacks.find { it.isDefault }
                                             if (songPack == defaultPack?.id || songPack == -1L) {
-                                                audio.startPad(note.resNameForMode(song.padMode), padChannel)
+                                                audio.startPad(note.resNameForMode(song.padMode), songPadChannel)
                                             } else {
                                                 val pad = soundPackDao.getPad(songPack, note.name, song.padMode)
                                                 if (pad != null) {
-                                                    audio.startPadFromFile(pad.filePath, padChannel)
+                                                    audio.startPadFromFile(pad.filePath, songPadChannel)
                                                 } else {
-                                                    audio.startPad(note.resNameForMode(song.padMode), padChannel)
+                                                    audio.startPad(note.resNameForMode(song.padMode), songPadChannel)
                                                 }
                                             }
                                             playingNote = note.label
                                         }
 
+                                        audio.padTargetVolume = song.padVolume
+                                        audio.padVolume = song.padVolume
+
                                         playingSongId = song.id
 
                                         if (song.clickEnabled) {
                                             clickEnabled = true
-                                            audio.startClick(bpm, clickChannel, clickVolume, accents)
+                                            audio.startClick(bpm, songClickChannel, song.clickVolume, accents)
                                         } else {
                                             clickEnabled = false
                                         }
@@ -518,6 +527,45 @@ class MainActivity : ComponentActivity() {
                                     audio.currentClickVolume = vol
                                     prefs.edit().putFloat("clickVolume", vol).apply()
                                 },
+                                isPadPlaying = playingNote != null,
+                                isClickPlaying = clickEnabled,
+                                onTogglePad = {
+                                    if (playingNote != null) {
+                                        audio.stopPad { }
+                                        playingNote = null
+                                    } else if (playingSongId != null) {
+                                        val songId = playingSongId!!
+                                        scope.launch {
+                                            val song = songDao.getById(songId) ?: return@launch
+                                            val note = ALL_NOTES.find { it.name == song.note } ?: return@launch
+                                            val songPadChannel = song.padChannel.toPadChannel()
+                                            val songPack = if (song.soundPackId > 0) song.soundPackId else currentPackId
+                                            val defaultPack = allPacks.find { it.isDefault }
+                                            if (songPack == defaultPack?.id || songPack == -1L) {
+                                                audio.startPad(note.resNameForMode(song.padMode), songPadChannel)
+                                            } else {
+                                                val pad = soundPackDao.getPad(songPack, note.name, song.padMode)
+                                                if (pad != null) audio.startPadFromFile(pad.filePath, songPadChannel)
+                                                else audio.startPad(note.resNameForMode(song.padMode), songPadChannel)
+                                            }
+                                            audio.padTargetVolume = song.padVolume
+                                            audio.padVolume = song.padVolume
+                                            playingNote = note.label
+                                        }
+                                    }
+                                },
+                                onToggleClick = {
+                                    if (clickEnabled) {
+                                        audio.stopClick()
+                                        clickEnabled = false
+                                    } else if (playingSongId != null) {
+                                        scope.launch {
+                                            val song = songDao.getById(playingSongId!!) ?: return@launch
+                                            audio.startClick(bpm, song.clickChannel.toClickChannel(), song.clickVolume, accents)
+                                        }
+                                        clickEnabled = true
+                                    }
+                                },
                                 onNavigateToAddSong = {
                                     navController.navigate("add_song")
                                 },
@@ -533,6 +581,7 @@ class MainActivity : ComponentActivity() {
                                         playingNote = null
                                         playingSongId = null
                                         playingMixId = null
+                                        isMixPausedState = false
                                         clickEnabled = false
                                     } else {
                                         if (playingNote != null) {
@@ -543,6 +592,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         mixAudio.stopAll()
                                         playingMixId = null
+                                        isMixPausedState = false
                                     }
                                     playlistLocked = !playlistLocked
                                 },
@@ -560,26 +610,40 @@ class MainActivity : ComponentActivity() {
                                     mixAudio.stopAll()
                                     mixAudio.startAll(tracks)
                                     playingMixId = project.id
+                                    isMixPausedState = false
                                 },
-                                onPauseMix = {
+                                onStopMix = {
                                     mixAudio.stopAll()
                                     playingMixId = null
+                                    isMixPausedState = false
                                 },
+                                onPauseMix = {
+                                    mixAudio.pauseAll()
+                                    isMixPausedState = true
+                                },
+                                onResumeMix = { tracks ->
+                                    mixAudio.resumeAll(tracks)
+                                    isMixPausedState = false
+                                },
+                                onSeekMix = { posMs -> mixAudio.seekAllCustom(posMs) },
+                                getMixPositionMs = { mixAudio.getCustomPositionMs() },
+                                getMixDurationMs = { mixAudio.getCustomDurationMs() },
+                                isMixPaused = isMixPausedState,
                                 mixTrackPlayingState = mixAudio.trackPlaying,
                                 onMixTrackVolumeChange = { track, vol ->
                                     mixAudio.setTrackVolume(track.id, vol)
                                     scope.launch { mixProjectDao.updateTrack(track.copy(volume = vol)) }
                                 },
-                                onStopMixTrack = { trackId -> mixAudio.stopTrack(trackId) },
-                                onStartMixTrack = { track -> mixAudio.startTrack(track) },
+                                onMuteMixTrack = { trackId -> mixAudio.muteTrack(trackId) },
+                                onUnmuteMixTrack = { trackId -> mixAudio.unmuteTrack(trackId) },
+                                mutedMixTrackIds = mixAudio.mutedTracks,
                                 onDeleteMixProject = { project ->
                                     if (playingMixId == project.id) {
                                         mixAudio.stopAll()
                                         playingMixId = null
                                     }
                                     scope.launch {
-                                        mixFileManager.deleteProjectFiles(project.id)
-                                        mixProjectDao.delete(project)
+                                        mixProjectDao.update(project.copy(inPlaylist = false))
                                     }
                                 }
                             )
@@ -598,7 +662,11 @@ class MainActivity : ComponentActivity() {
                                 livePadMode = padMode,
                                 liveNote = playingNote?.let { label ->
                                     ALL_NOTES.find { it.label == label }?.name
-                                } ?: "c"
+                                } ?: "c",
+                                livePadVolume = padVolume,
+                                livePadChannel = padChannel.name.lowercase(),
+                                liveClickVolume = clickVolume,
+                                liveClickChannel = clickChannel.name.lowercase()
                             )
                         }
 
@@ -663,11 +731,13 @@ class MainActivity : ComponentActivity() {
                                 onFadeInChange = {
                                     fadeInMs = it
                                     audio.fadeInMs = it
+                                    mixAudio.fadeInMs = it
                                     prefs.edit().putLong("fadeInMs", it).apply()
                                 },
                                 onFadeOutChange = {
                                     fadeOutMs = it
                                     audio.fadeOutMs = it
+                                    mixAudio.fadeOutMs = it
                                     prefs.edit().putLong("fadeOutMs", it).apply()
                                 },
                                 onManagePacks = {
@@ -767,36 +837,59 @@ class MainActivity : ComponentActivity() {
                             MixStudioEditorScreen(
                                 projectId = projectId,
                                 mixDao = mixProjectDao,
+                                soundPackDao = soundPackDao,
                                 allPacks = allPacks,
-                                defaultPadVolume = padVolume,
-                                defaultPadChannel = padChStr,
-                                defaultClickVolume = clickVolume,
-                                defaultClickChannel = clickChStr,
-                                defaultBpm = bpm,
-                                defaultAccents = accents,
-                                onBack = {
-                                    mixAudio.stopAll()
-                                    navController.popBackStack()
-                                },
-                                onPickAudioFile = {
-                                    audioPickerLauncher.launch(arrayOf("audio/*"))
-                                },
+                                defaults = MixEditorDefaults(
+                                    padVolume = padVolume,
+                                    padChannel = padChStr,
+                                    clickVolume = clickVolume,
+                                    clickChannel = clickChStr,
+                                    bpm = bpm,
+                                    accents = accents
+                                ),
+                                callbacks = MixEditorCallbacks(
+                                    onBack = {
+                                        mixAudio.stopAll()
+                                        navController.popBackStack()
+                                    },
+                                    onPickAudioFile = {
+                                        audioPickerLauncher.launch(arrayOf("audio/*"))
+                                    },
+                                    onAudioConsumed = {
+                                        pendingAudioUri = null
+                                        pendingAudioName = null
+                                    },
+                                    onStartTrack = { track -> mixAudio.startTrack(track) },
+                                    onStopTrack = { trackId -> mixAudio.stopTrack(trackId) },
+                                    onMuteTrack = { trackId -> mixAudio.muteTrack(trackId) },
+                                    onUnmuteTrack = { trackId -> mixAudio.unmuteTrack(trackId) },
+                                    onSetTrackVolume = { trackId, vol -> mixAudio.setTrackVolume(trackId, vol) },
+                                    onStartAll = { tracks -> mixAudio.startAll(tracks) },
+                                    onStopAll = { mixAudio.stopAll() },
+                                    onPauseAll = { mixAudio.pauseAll() },
+                                    onResumeAll = { tracks -> mixAudio.resumeAll(tracks) },
+                                    onSeekAll = { posMs -> mixAudio.seekAllCustom(posMs) },
+                                    getPositionMs = { mixAudio.getCustomPositionMs() },
+                                    getDurationMs = { mixAudio.getCustomDurationMs() },
+                                    hasCustomTracks = { mixAudio.hasCustomTracks() },
+                                    isEnginePaused = { mixAudio.isPaused },
+                                    onDeleteTrackFile = { filePath ->
+                                        if (filePath != null) {
+                                            mixFileManager.deleteTrackFile(filePath)
+                                        }
+                                    },
+                                    onProjectReady = { id -> activeEditorProjectId = id },
+                                    onGoToPlaylist = {
+                                        navController.navigate("playlist") {
+                                            popUpTo("mix_editor/{projectId}") { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                ),
                                 pendingAudioUri = pendingAudioUri,
                                 pendingAudioName = pendingAudioName,
-                                onAudioConsumed = {
-                                    pendingAudioUri = null
-                                    pendingAudioName = null
-                                },
-                                onStartTrack = { track -> mixAudio.startTrack(track) },
-                                onStopTrack = { trackId -> mixAudio.stopTrack(trackId) },
-                                onStartAll = { tracks -> mixAudio.startAll(tracks) },
-                                onStopAll = { mixAudio.stopAll() },
                                 trackPlayingState = mixAudio.trackPlaying,
-                                onDeleteTrackFile = { filePath ->
-                                    if (filePath != null) {
-                                        mixFileManager.deleteTrackFile(filePath)
-                                    }
-                                }
+                                mutedTrackIds = mixAudio.mutedTracks
                             )
                         }
                     }

@@ -18,8 +18,12 @@ data class Song(
     val createdAt: Long = System.currentTimeMillis(),
     val sortOrder: Int = 0,
     val padMode: String = "maj",
-    val soundPackId: Long = -1  // -1 = use current/default pack
-) {
+    val soundPackId: Long = -1, // -1 = use current/default pack
+    val padVolume: Float = 0.5f,
+    val padChannel: String = "mono",    // "left", "mono", "right"
+    val clickVolume: Float = 0.5f,
+    val clickChannel: String = "mono"   // "left", "mono", "right"
+){
     fun accentList(): List<Int> = if (accents.isBlank()) listOf(1,0,0,0) else accents.split(",").map { it.toIntOrNull() ?: if (it == "true") 1 else 0 }
     companion object {
         fun accentsToString(list: List<Int>): String = list.joinToString(",")
@@ -58,7 +62,12 @@ data class MixProject(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val inPlaylist: Boolean = false,
+    val padVolume: Float = 0.5f,
+    val padChannel: String = "mono",    // "left", "mono", "right"
+    val clickVolume: Float = 0.5f,
+    val clickChannel: String = "mono"   // "left", "mono", "right"
 )
 
 @Entity(
@@ -153,6 +162,9 @@ interface MixProjectDao {
     @Query("SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC")
     fun getAll(): Flow<List<MixProject>>
 
+    @Query("SELECT * FROM mix_projects WHERE inPlaylist = 1 ORDER BY sortOrder ASC, createdAt DESC")
+    fun getAllInPlaylist(): Flow<List<MixProject>>
+
     @Query("SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC")
     suspend fun getAllOnce(): List<MixProject>
 
@@ -188,9 +200,12 @@ interface MixProjectDao {
 
     @Delete
     suspend fun deleteTrack(track: MixTrack)
+
+    @Query("DELETE FROM mix_tracks WHERE projectId = :projectId")
+    suspend fun deleteTracksForProject(projectId: Long)
 }
 
-@Database(entities = [Song::class, SoundPack::class, SoundPad::class, MixProject::class, MixTrack::class], version = 11)
+@Database(entities = [Song::class, SoundPack::class, SoundPad::class, MixProject::class, MixTrack::class], version = 13)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun soundPackDao(): SoundPackDao
@@ -308,6 +323,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE mix_projects ADD COLUMN inPlaylist INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN padVolume REAL NOT NULL DEFAULT 0.5")
+                db.execSQL("ALTER TABLE songs ADD COLUMN padChannel TEXT NOT NULL DEFAULT 'mono'")
+                db.execSQL("ALTER TABLE songs ADD COLUMN clickVolume REAL NOT NULL DEFAULT 0.5")
+                db.execSQL("ALTER TABLE songs ADD COLUMN clickChannel TEXT NOT NULL DEFAULT 'mono'")
+                db.execSQL("ALTER TABLE mix_projects ADD COLUMN padVolume REAL NOT NULL DEFAULT 0.5")
+                db.execSQL("ALTER TABLE mix_projects ADD COLUMN padChannel TEXT NOT NULL DEFAULT 'mono'")
+                db.execSQL("ALTER TABLE mix_projects ADD COLUMN clickVolume REAL NOT NULL DEFAULT 0.5")
+                db.execSQL("ALTER TABLE mix_projects ADD COLUMN clickChannel TEXT NOT NULL DEFAULT 'mono'")
+            }
+        }
+
         fun getInstance(context: android.content.Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val prefs = context.applicationContext.getSharedPreferences("atmosfera_settings", android.content.Context.MODE_PRIVATE)
@@ -316,7 +350,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "atmosfera_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)

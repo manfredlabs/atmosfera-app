@@ -18,6 +18,12 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "16.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.manfredlabs.atmosfera
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../shared/build/bin/iosArm64/releaseFramework
+        PROVISIONING_PROFILE_SPECIFIER: atmosfera
+        CODE_SIGN_IDENTITY: "Apple Distribution"
     info:
       path: iosApp/Info.plist
       properties:
@@ -60,8 +66,3 @@ targets:
           chmod +x gradlew
           ./gradlew :shared:linkReleaseFrameworkIosArm64
         basedOnDependencyAnalysis: false
-    settings:
-      base:
-        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../shared/build/bin/iosArm64/releaseFramework
-        PROVISIONING_PROFILE_SPECIFIER: atmosfera
-        CODE_SIGN_IDENTITY: "Apple Distribution"

@@ -15,6 +15,7 @@ workflows:
     scripts:
       - name: Build Android release
         script: |
+          chmod +x gradlew
           ./gradlew :app:bundleRelease \
             -PversionCode=$BUILD_NUMBER
       - name: Sign AAB
@@ -59,7 +60,8 @@ workflows:
             --project iosApp/iosApp.xcodeproj
       - name: Build KMP shared framework
         script: |
-          ./gradlew :shared:assembleXCFramework
+          chmod +x gradlew
+          ./gradlew :shared:linkReleaseFrameworkIosArm64
       - name: Install xcodegen
         script: |
           brew install xcodegen || true

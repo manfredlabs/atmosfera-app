@@ -372,88 +372,85 @@ class AppState: ObservableObject {
         defaults.set(true, forKey: "default_pack_checked")
     }
 
-    // MARK: - KVC mapping helpers (Kotlin objects → Swift structs)
+    // MARK: - Kotlin → Swift mapping (direct property access)
 
     func songFromKotlin(_ obj: Any) -> SongItem? {
-        guard let s = obj as AnyObject? else { return nil }
+        guard let s = obj as? Song else { return nil }
         return SongItem(
-            id: (s.value(forKey: "id") as? Int64) ?? 0,
-            name: (s.value(forKey: "name") as? String) ?? "",
-            note: (s.value(forKey: "note") as? String) ?? "",
-            isMajor: (s.value(forKey: "isMajor") as? Bool) ?? true,
-            bpm: (s.value(forKey: "bpm") as? Int) ?? 90,
-            accents: (s.value(forKey: "accents") as? String) ?? "1,0,0,0",
-            padEnabled: (s.value(forKey: "padEnabled") as? Bool) ?? true,
-            clickEnabled: (s.value(forKey: "clickEnabled") as? Bool) ?? true,
-            createdAt: (s.value(forKey: "createdAt") as? Int64) ?? 0,
-            sortOrder: (s.value(forKey: "sortOrder") as? Int) ?? 0,
-            padMode: (s.value(forKey: "padMode") as? String) ?? "maj",
-            soundPackId: (s.value(forKey: "soundPackId") as? Int64) ?? -1,
-            padVolume: (s.value(forKey: "padVolume") as? Float) ?? 0.5,
-            padChannel: (s.value(forKey: "padChannel") as? String) ?? "mono",
-            clickVolume: (s.value(forKey: "clickVolume") as? Float) ?? 0.5,
-            clickChannel: (s.value(forKey: "clickChannel") as? String) ?? "mono"
+            id: s.id,
+            name: s.name,
+            note: s.note,
+            isMajor: s.isMajor,
+            bpm: Int(s.bpm),
+            accents: s.accents,
+            padEnabled: s.padEnabled,
+            clickEnabled: s.clickEnabled,
+            createdAt: s.createdAt,
+            sortOrder: Int(s.sortOrder),
+            padMode: s.padMode,
+            soundPackId: s.soundPackId,
+            padVolume: s.padVolume,
+            padChannel: s.padChannel,
+            clickVolume: s.clickVolume,
+            clickChannel: s.clickChannel
         )
     }
 
     func packFromKotlin(_ obj: Any) -> SoundPackItem? {
-        guard let s = obj as AnyObject? else { return nil }
-        // KMP renames 'description' to avoid NSObject collision → try both keys
-        let desc = (s.value(forKey: "description_") as? String)
-            ?? (s.value(forKey: "description") as? String) ?? ""
+        guard let pack = obj as? SoundPack else { return nil }
         return SoundPackItem(
-            id: (s.value(forKey: "id") as? Int64) ?? 0,
-            name: (s.value(forKey: "name") as? String) ?? "",
-            description: desc,
-            isDefault: (s.value(forKey: "isDefault") as? Bool) ?? false,
-            createdAt: (s.value(forKey: "createdAt") as? Int64) ?? 0
+            id: pack.id,
+            name: pack.name,
+            description: pack.description_,
+            isDefault: pack.isDefault,
+            createdAt: pack.createdAt
         )
     }
 
     func padFromKotlin(_ obj: Any) -> SoundPadItem? {
-        guard let s = obj as AnyObject? else { return nil }
+        guard let p = obj as? SoundPad else { return nil }
         return SoundPadItem(
-            id: (s.value(forKey: "id") as? Int64) ?? 0,
-            packId: (s.value(forKey: "packId") as? Int64) ?? 0,
-            note: (s.value(forKey: "note") as? String) ?? "",
-            mode: (s.value(forKey: "mode") as? String) ?? "",
-            filePath: (s.value(forKey: "filePath") as? String) ?? "",
-            createdAt: (s.value(forKey: "createdAt") as? Int64) ?? 0
+            id: p.id,
+            packId: p.packId,
+            note: p.note,
+            mode: p.mode,
+            filePath: p.filePath,
+            createdAt: p.createdAt
         )
     }
 
     func mixProjectFromKotlin(_ obj: Any) -> MixProjectItem? {
-        guard let s = obj as AnyObject? else { return nil }
+        guard let m = obj as? MixProject else { return nil }
         return MixProjectItem(
-            id: (s.value(forKey: "id") as? Int64) ?? 0,
-            name: (s.value(forKey: "name") as? String) ?? "",
-            createdAt: (s.value(forKey: "createdAt") as? Int64) ?? 0,
-            sortOrder: (s.value(forKey: "sortOrder") as? Int) ?? 0,
-            inPlaylist: (s.value(forKey: "inPlaylist") as? Bool) ?? false,
-            padVolume: (s.value(forKey: "padVolume") as? Float) ?? 0.5,
-            padChannel: (s.value(forKey: "padChannel") as? String) ?? "mono",
-            clickVolume: (s.value(forKey: "clickVolume") as? Float) ?? 0.5,
-            clickChannel: (s.value(forKey: "clickChannel") as? String) ?? "mono"
+            id: m.id,
+            name: m.name,
+            createdAt: m.createdAt,
+            sortOrder: Int(m.sortOrder),
+            inPlaylist: m.inPlaylist,
+            padVolume: m.padVolume,
+            padChannel: m.padChannel,
+            clickVolume: m.clickVolume,
+            clickChannel: m.clickChannel
         )
     }
 
     func mixTrackFromKotlin(_ obj: Any) -> MixTrackItem? {
-        guard let s = obj as AnyObject? else { return nil }
+        guard let t = obj as? MixTrack else { return nil }
         return MixTrackItem(
-            id: (s.value(forKey: "id") as? Int64) ?? 0,
-            projectId: (s.value(forKey: "projectId") as? Int64) ?? 0,
-            trackType: (s.value(forKey: "trackType") as? String) ?? "",
-            label: (s.value(forKey: "label") as? String) ?? "",
-            volume: (s.value(forKey: "volume") as? Float) ?? 0.5,
-            channel: (s.value(forKey: "channel") as? String) ?? "mono",
-            sortOrder: (s.value(forKey: "sortOrder") as? Int) ?? 0,
-            note: s.value(forKey: "note") as? String,
-            padMode: s.value(forKey: "padMode") as? String,
-            soundPackId: s.value(forKey: "soundPackId") as? Int64,
-            bpm: s.value(forKey: "bpm") as? Int,
-            accents: s.value(forKey: "accents") as? String,
-            filePath: s.value(forKey: "filePath") as? String,
-            fileName: s.value(forKey: "fileName") as? String
+            id: t.id,
+            projectId: t.projectId,
+            trackType: t.trackType,
+            label: t.label,
+            volume: t.volume,
+            channel: t.channel,
+            sortOrder: Int(t.sortOrder),
+            note: t.note,
+            padMode: t.padMode,
+            soundPackId: t.soundPackId.map { $0.int64Value },
+            bpm: t.bpm.map { Int($0.int32Value) },
+            accents: t.accents,
+            filePath: t.filePath,
+            fileName: t.fileName
         )
     }
 }

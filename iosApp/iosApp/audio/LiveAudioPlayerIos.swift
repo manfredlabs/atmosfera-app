@@ -33,8 +33,14 @@ class LiveAudioPlayerIos: ObservableObject {
     private var fadeTimer: Timer?
 
     init() {
-        engine.prepare()
-        do { try engine.start() } catch { print("AVAudioEngine start failed: \(error)") }
+        // Don't start engine here — start lazily when first node is attached
+    }
+
+    private func ensureEngineRunning() {
+        if !engine.isRunning {
+            engine.prepare()
+            do { try engine.start() } catch { NSLog("ATMOSFERA: AVAudioEngine start failed: %@", error.localizedDescription) }
+        }
     }
 
     // MARK: - Pad
@@ -67,7 +73,7 @@ class LiveAudioPlayerIos: ObservableObject {
         applyPanning(mixerNode: mixerNode, channel: padChannel)
         mixerNode.outputVolume = 0
 
-        if !engine.isRunning { try? engine.start() }
+        ensureEngineRunning()
 
         playerNode.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
         playerNode.play()

@@ -110,16 +110,22 @@ class AppState: ObservableObject {
     private let defaults = UserDefaults.standard
 
     init() {
-        db = AtmosDb(driverFactory: DatabaseDriverFactory())
+        print("AppState: creating DatabaseDriverFactory...")
+        let factory = DatabaseDriverFactory()
+        print("AppState: creating AtmosDb...")
+        db = AtmosDb(driverFactory: factory)
+        print("AppState: creating IosDbHelper...")
         dbHelper = IosDbHelper(db: db)
+        print("AppState: loading settings...")
         loadSettings()
         liveAudio.fadeInMs = fadeInMs
         liveAudio.fadeOutMs = fadeOutMs
         mixAudio.fadeInMs = fadeInMs
         mixAudio.fadeOutMs = fadeOutMs
+        print("AppState: init complete")
     }
 
-    func loadInitialData() async {
+    func loadInitialData() async throws {
         await ensureDefaultPack()
         await refreshSongs()
         await refreshPacks()

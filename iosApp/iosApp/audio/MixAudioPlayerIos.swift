@@ -30,9 +30,15 @@ class MixAudioPlayerIos: ObservableObject {
     private var accentPlayer: AVAudioPlayer?
 
     init() {
-        engine.prepare()
-        do { try engine.start() } catch { print("MixAudioEngine start failed: \(error)") }
+        // Don't start engine here — start lazily when first node is attached
         loadClickSounds()
+    }
+
+    private func ensureEngineRunning() {
+        if !engine.isRunning {
+            engine.prepare()
+            do { try engine.start() } catch { NSLog("ATMOSFERA: MixAudioEngine start failed: %@", error.localizedDescription) }
+        }
     }
 
     private func loadClickSounds() {
@@ -208,7 +214,7 @@ class MixAudioPlayerIos: ObservableObject {
         engine.connect(mixerNode, to: engine.mainMixerNode, format: nil)
         mixerNode.pan = pan(for: track.channel)
         mixerNode.outputVolume = 0
-        if !engine.isRunning { try? engine.start() }
+        ensureEngineRunning()
         playerNode.scheduleBuffer(buffer, at: nil, options: .loops)
         playerNode.play()
         playerNodes[track.id] = playerNode
@@ -238,8 +244,8 @@ class MixAudioPlayerIos: ObservableObject {
         engine.connect(mixerNode, to: engine.mainMixerNode, format: nil)
         mixerNode.pan = pan(for: track.channel)
         mixerNode.outputVolume = track.volume
-        if !engine.isRunning { try? engine.start() }
-        playerNode.scheduleFile(file, at: nil) { [weak self] in
+        ensureEngineRunning()
+        playerNode.scheduleFile(file, at: nil){ [weak self] in
             DispatchQueue.main.async { self?.trackPlaying[track.id] = false }
         }
         playerNode.play()

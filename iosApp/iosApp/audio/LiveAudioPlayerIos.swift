@@ -34,7 +34,7 @@ class LiveAudioPlayerIos: ObservableObject {
 
     init() {
         engine.prepare()
-        try? engine.start()
+        do { try engine.start() } catch { print("AVAudioEngine start failed: \(error)") }
     }
 
     // MARK: - Pad

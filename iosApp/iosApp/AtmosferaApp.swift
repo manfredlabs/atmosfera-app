@@ -3,20 +3,10 @@ import AVFoundation
 
 @main
 struct AtmosferaApp: App {
-    @StateObject private var appState = AppState()
+    @StateObject private var appState: AppState
 
     init() {
-        configureAudioSession()
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(appState)
-        }
-    }
-
-    private func configureAudioSession() {
+        // Configure audio session BEFORE any audio engine init
         do {
             try AVAudioSession.sharedInstance().setCategory(
                 .playback,
@@ -26,6 +16,14 @@ struct AtmosferaApp: App {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Audio session setup failed: \(error)")
+        }
+        _appState = StateObject(wrappedValue: AppState())
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(appState)
         }
     }
 }

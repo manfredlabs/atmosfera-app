@@ -31,7 +31,7 @@ class MixAudioPlayerIos: ObservableObject {
 
     init() {
         engine.prepare()
-        try? engine.start()
+        do { try engine.start() } catch { print("MixAudioEngine start failed: \(error)") }
         loadClickSounds()
     }
 

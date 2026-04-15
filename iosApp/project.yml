@@ -34,7 +34,8 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleIconName: AppIcon
-        UILaunchStoryboardName: ""
+        UILaunchScreen:
+          UIColorName: ""
         UIRequiredDeviceCapabilities:
           - arm64
         UISupportedInterfaceOrientations:

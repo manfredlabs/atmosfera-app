@@ -31,7 +31,7 @@ class IosDbHelper(private val db: AtmosDb) {
             Song(
                 name = name, note = note, isMajor = isMajor, bpm = bpm,
                 accents = accents, padEnabled = padEnabled, clickEnabled = clickEnabled,
-                createdAt = System.currentTimeMillis(), sortOrder = sortOrder,
+                createdAt = currentTimeMs(), sortOrder = sortOrder,
                 padMode = padMode, soundPackId = soundPackId, padVolume = padVolume,
                 padChannel = padChannel, clickVolume = clickVolume, clickChannel = clickChannel
             )
@@ -66,7 +66,7 @@ class IosDbHelper(private val db: AtmosDb) {
         db.soundPackDao.insert(
             SoundPack(
                 name = name, description = description, isDefault = isDefault,
-                createdAt = System.currentTimeMillis()
+                createdAt = currentTimeMs()
             )
         )
 
@@ -86,7 +86,7 @@ class IosDbHelper(private val db: AtmosDb) {
         return db.soundPackDao.insertPad(
             SoundPad(
                 packId = packId, note = note, mode = mode, filePath = filePath,
-                createdAt = System.currentTimeMillis()
+                createdAt = currentTimeMs()
             )
         )
     }
@@ -99,7 +99,7 @@ class IosDbHelper(private val db: AtmosDb) {
     suspend fun insertMixProject(name: String): Long =
         db.mixProjectDao.insert(
             MixProject(
-                name = name, createdAt = System.currentTimeMillis(),
+                name = name, createdAt = currentTimeMs(),
                 sortOrder = getMixProjects().size
             )
         )

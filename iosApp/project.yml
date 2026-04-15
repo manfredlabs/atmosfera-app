@@ -27,12 +27,13 @@ targets:
         OTHER_LDFLAGS: $(inherited) -framework Shared -lsqlite3
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
-      path: iosApp/Info.plist
       properties:
         CFBundleDisplayName: "Atmosfera"
         CFBundleName: "Atmosfera"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleIconName: AppIcon
+        LSRequiresIPhoneOS: true
         UILaunchStoryboardName: ""
         UIRequiredDeviceCapabilities:
           - arm64
@@ -49,13 +50,9 @@ targets:
         UIBackgroundModes:
           - audio
         NSMicrophoneUsageDescription: "Atmosfera needs microphone access for tap tempo."
-        CFBundleIconName: AppIcon
     sources:
       - path: iosApp
-        excludes:
-          - "Info.plist"
     resources:
-      - path: Assets.xcassets
       - path: iosApp/Resources
         optional: true
     dependencies:

@@ -10,44 +10,57 @@ struct SoundPackScreen: View {
     let pack: SoundPackItem
 
     @State private var pads: [SoundPadItem] = []
+    @State private var padMode = "maj"
     @State private var selectedNote = ""
     @State private var selectedMode = ""
     @State private var showFilePicker = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Grid 4×3 (same as HomeScreen)
-                let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(Array(allNotes.enumerated()), id: \.offset) { idx, note in
-                        ForEach(allModes, id: \.self) { mode in
-                            let assigned = pads.first { $0.note == note && $0.mode == mode }
-                            Button {
-                                selectedNote = note
-                                selectedMode = mode
-                                showFilePicker = true
-                            } label: {
-                                VStack(spacing: 2) {
-                                    Text(noteLabels[idx]).font(.subheadline.bold())
-                                    Text(mode).font(.caption2)
-                                    Image(systemName: assigned != nil ? "checkmark.circle.fill" : "plus.circle")
-                                        .font(.caption)
-                                        .foregroundStyle(assigned != nil ? .green : .secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 64)
-                                .background(Color(.secondarySystemBackground))
-                                .cornerRadius(10)
-                            }
-                        }
+        ZStack {
+            Color.darkBg.ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    ScreenHeader(title: "SOUND PACK")
+                        .padding(.top, 8)
+
+                    // Name (read-only display)
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionHeader(title: "NAME")
+                        Text(pack.name)
+                            .font(.spaceGrotesk(.regular, size: 18))
+                            .foregroundColor(.textPrimary)
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                            .background(Color.padIdle)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
+                            )
+                    }
+
+                    // Mode pill
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionHeader(title: "KEY")
+                        PillSelector(
+                            options: ["NEU", "MAJ", "MIN"],
+                            selected: Binding(
+                                get: { padMode.uppercased() },
+                                set: { padMode = $0.lowercased() }
+                            )
+                        )
+
+                        // Note grid 4×3
+                        noteGrid
                     }
                 }
-                .padding()
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .frame(maxWidth: 600)
             }
-            .frame(maxWidth: 600)
         }
-        .navigationTitle(pack.name)
+        .navigationBarHidden(true)
         .fileImporter(isPresented: $showFilePicker,
                       allowedContentTypes: [.audio]) { result in
             if case .success(let url) = result {
@@ -58,14 +71,54 @@ struct SoundPackScreen: View {
             await appState.refreshPads(packId: pack.id)
             pads = appState.currentPads
         }
+        .onChange(of: appState.currentPads) { _, new in pads = new }
     }
+
+    // MARK: - Note Grid
+
+    private var noteGrid: some View {
+        let chunked = stride(from: 0, to: allNotes.count, by: 3).map {
+            Array(Array(allNotes.enumerated())[$0..<min($0+3, allNotes.count)])
+        }
+        return VStack(spacing: 6) {
+            ForEach(chunked.indices, id: \.self) { rowIdx in
+                HStack(spacing: 6) {
+                    ForEach(chunked[rowIdx], id: \.offset) { idx, note in
+                        let hasPad = pads.contains { $0.note == note && $0.mode == padMode }
+                        Button {
+                            selectedNote = note
+                            selectedMode = padMode
+                            showFilePicker = true
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text(noteLabels[idx])
+                                    .font(.spaceGrotesk(hasPad ? .bold : .regular, size: 15))
+                                    .foregroundColor(hasPad ? .ledAmber : .textSecondary)
+                                Image(systemName: hasPad ? "checkmark.circle.fill" : "plus.circle")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(hasPad ? .ledAmber.opacity(0.6) : .textSecondary.opacity(0.3))
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 54)
+                            .background(hasPad ? Color.ledAmber.opacity(0.15) : Color.padIdle)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(hasPad ? Color.ledAmber.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - File assignment
 
     private func assignPad(note: String, mode: String, url: URL) {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("soundpacks/\(pack.id)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let dest = dir.appendingPathComponent("\(note)_\(mode)_\(url.lastPathComponent)")
-        // Copy if not already in our documents directory
         if url.startAccessingSecurityScopedResource() {
             defer { url.stopAccessingSecurityScopedResource() }
             try? FileManager.default.copyItem(at: url, to: dest)

@@ -12,55 +12,88 @@ struct MixStudioEditorScreen: View {
     @State private var isPlaying = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Transport bar
-            transportBar
+        ZStack {
+            Color.darkBg.ignoresSafeArea()
 
-            Divider()
+            VStack(spacing: 0) {
+                // Header
+                ScreenHeader(title: project.name.uppercased())
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
 
-            // Track list
-            if tracks.isEmpty {
-                ContentUnavailableView("No tracks", systemImage: "waveform",
-                    description: Text("Tap + to add tracks."))
-            } else {
-                List {
-                    ForEach(tracks) { track in
-                        TrackRow(
-                            track: track,
-                            isPlaying: appState.mixAudio.trackPlaying[track.id] == true,
-                            isMuted: appState.mixAudio.mutedTracks[track.id] == true,
-                            onVolume: { vol in appState.mixAudio.setTrackVolume(track.id, volume: vol) },
-                            onMute: {
-                                if appState.mixAudio.mutedTracks[track.id] == true {
-                                    appState.mixAudio.unmuteTrack(track.id)
-                                } else {
-                                    appState.mixAudio.muteTrack(track.id)
-                                }
+                // Transport bar
+                transportBar
+                    .padding(.bottom, 8)
+
+                Rectangle()
+                    .fill(Color.padBorder.opacity(0.3))
+                    .frame(height: 1)
+
+                // Track list
+                if tracks.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 48))
+                            .foregroundColor(.textSecondary.opacity(0.3))
+                        Text("No tracks")
+                            .font(.spaceGrotesk(.regular, size: 16))
+                            .foregroundColor(.textSecondary.opacity(0.5))
+                        Text("Tap + to add tracks")
+                            .font(.spaceGrotesk(.regular, size: 13))
+                            .foregroundColor(.textSecondary.opacity(0.3))
+                    }
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            ForEach(tracks) { track in
+                                TrackRowView(
+                                    track: track,
+                                    isPlaying: appState.mixAudio.trackPlaying[track.id] == true,
+                                    isMuted: appState.mixAudio.mutedTracks[track.id] == true,
+                                    onVolume: { vol in appState.mixAudio.setTrackVolume(track.id, volume: vol) },
+                                    onMute: {
+                                        if appState.mixAudio.mutedTracks[track.id] == true {
+                                            appState.mixAudio.unmuteTrack(track.id)
+                                        } else {
+                                            appState.mixAudio.muteTrack(track.id)
+                                        }
+                                    },
+                                    onDelete: {
+                                        appState.mixAudio.stopTrack(track.id)
+                                        tracks.removeAll { $0.id == track.id }
+                                        Task { await appState.deleteMixTrack(trackId: track.id, projectId: project.id) }
+                                    }
+                                )
                             }
-                        )
-                    }
-                    .onMove { from, to in
-                        tracks.move(fromOffsets: from, toOffset: to)
-                    }
-                    .onDelete { indexSet in
-                        let toDelete = indexSet.map { tracks[$0] }
-                        tracks.remove(atOffsets: indexSet)
-                        toDelete.forEach { t in
-                            appState.mixAudio.stopTrack(t.id)
-                            Task { await appState.deleteMixTrack(trackId: t.id, projectId: project.id) }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
                     }
                 }
-                .environment(\.editMode, .constant(.active))
+            }
+            .frame(maxWidth: 600)
+            .padding(.horizontal, 20)
+
+            // FAB
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button { showAddTrack = true } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 56, height: 56)
+                            .background(Color.labsPurple)
+                            .clipShape(Circle())
+                    }
+                    .padding(24)
+                }
             }
         }
-        .frame(maxWidth: 600)
-        .navigationTitle(project.name)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showAddTrack = true } label: { Image(systemName: "plus") }
-            }
-        }
+        .navigationBarHidden(true)
         .confirmationDialog("Add Track", isPresented: $showAddTrack) {
             Button("Pad Track") { addPadTrack() }
             Button("Click Track") { addClickTrack() }
@@ -96,6 +129,7 @@ struct MixStudioEditorScreen: View {
             } label: {
                 Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                     .font(.title2)
+                    .foregroundColor(isPlaying ? .labsPurple : .textPrimary)
             }
 
             if isPlaying {
@@ -108,13 +142,12 @@ struct MixStudioEditorScreen: View {
                 } label: {
                     Image(systemName: appState.mixAudio.isPaused ? "play.circle" : "pause.fill")
                         .font(.title2)
+                        .foregroundColor(.textPrimary)
                 }
             }
 
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Track creation helpers
@@ -180,53 +213,83 @@ struct MixStudioEditorScreen: View {
     }
 }
 
-// MARK: - TrackRow
+// MARK: - TrackRow (dark themed)
 
-private struct TrackRow: View {
+private struct TrackRowView: View {
     let track: MixTrackItem
     let isPlaying: Bool
     let isMuted: Bool
     let onVolume: (Float) -> Void
     let onMute: () -> Void
+    let onDelete: () -> Void
     @State private var volume: Float
 
     init(track: MixTrackItem, isPlaying: Bool, isMuted: Bool,
-         onVolume: @escaping (Float) -> Void, onMute: @escaping () -> Void) {
+         onVolume: @escaping (Float) -> Void, onMute: @escaping () -> Void,
+         onDelete: @escaping () -> Void) {
         self.track = track
         self.isPlaying = isPlaying
         self.isMuted = isMuted
         self.onVolume = onVolume
         self.onMute = onMute
+        self.onDelete = onDelete
         _volume = State(initialValue: track.volume)
     }
 
     var typeIcon: String {
         switch track.trackType {
-        case "pad":    return "waveform"
+        case "pad":    return "pianokeys"
         case "click":  return "metronome"
         case "custom": return "music.note"
         default:       return "questionmark"
         }
     }
 
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: typeIcon)
-                .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(track.label).font(.subheadline.bold())
-                Slider(value: Binding(get: { volume }, set: { volume = $0; onVolume($0) }), in: 0...1)
-                    .labelsHidden()
-            }
-
-            Button { onMute() } label: {
-                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2")
-                    .foregroundStyle(isMuted ? .secondary : .primary)
-            }
-            .buttonStyle(.plain)
+    var accentColor: Color {
+        switch track.trackType {
+        case "pad":   return .ledAmber
+        case "click": return .clickTeal
+        default:      return .labsPurple
         }
-        .listRowBackground(isPlaying ? Color.accentColor.opacity(0.1) : nil)
+    }
+
+    var body: some View {
+        DarkSurface(borderColor: isPlaying ? accentColor.opacity(0.5) : .padBorder) {
+            HStack(spacing: 12) {
+                // Type icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(accentColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: typeIcon)
+                        .font(.system(size: 16))
+                        .foregroundColor(isPlaying ? accentColor : .textSecondary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(track.label)
+                        .font(.spaceGrotesk(.medium, size: 14))
+                        .foregroundColor(.textPrimary)
+                    Slider(value: Binding(get: { volume }, set: { volume = $0; onVolume($0) }), in: 0...1)
+                        .tint(accentColor)
+                }
+
+                Button { onMute() } label: {
+                    Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2")
+                        .font(.system(size: 14))
+                        .foregroundColor(isMuted ? .textSecondary.opacity(0.4) : .textPrimary)
+                }
+                .buttonStyle(.plain)
+
+                Button { onDelete() } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.textSecondary.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
     }
 }

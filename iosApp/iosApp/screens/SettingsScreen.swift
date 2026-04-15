@@ -17,7 +17,16 @@ struct SettingsScreen: View {
                                 appState.saveSettings()
                             }
                     }
-                    channelPicker("Channel", selection: channelBinding(for: \.padChannel))
+                    HStack {
+                        Text("Channel")
+                        Spacer()
+                        Picker("Channel", selection: $appState.padChannel) {
+                            ForEach(channelOptions, id: \.self) { Text($0.capitalized).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 160)
+                        .onChange(of: appState.padChannel) { _, _ in appState.saveSettings() }
+                    }
                 }
 
                 Section("Click") {
@@ -26,7 +35,16 @@ struct SettingsScreen: View {
                         Slider(value: $appState.clickVolume, in: 0...1)
                             .onChange(of: appState.clickVolume) { _, _ in appState.saveSettings() }
                     }
-                    channelPicker("Channel", selection: channelBinding(for: \.clickChannel))
+                    HStack {
+                        Text("Channel")
+                        Spacer()
+                        Picker("Channel", selection: $appState.clickChannel) {
+                            ForEach(channelOptions, id: \.self) { Text($0.capitalized).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 160)
+                        .onChange(of: appState.clickChannel) { _, _ in appState.saveSettings() }
+                    }
                 }
 
                 Section("Fade") {
@@ -59,26 +77,5 @@ struct SettingsScreen: View {
             .frame(maxWidth: 600)
             .navigationTitle("Settings")
         }
-    }
-
-    private func channelPicker(_ label: String, selection: Binding<String>) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Picker(label, selection: selection) {
-                ForEach(channelOptions, id: \.self) { ch in
-                    Text(ch.capitalized).tag(ch)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 160)
-        }
-    }
-
-    private func channelBinding(for keyPath: WritableKeyPath<AppState, String>) -> Binding<String> {
-        Binding(
-            get: { appState[keyPath: keyPath] },
-            set: { appState[keyPath: keyPath] = $0; appState.saveSettings() }
-        )
     }
 }

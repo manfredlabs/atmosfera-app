@@ -1,5 +1,7 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Combine
+
+private class Counter { var value = 0 }
 
 // MARK: - MixAudioPlayerIos
 // iOS equivalent of Android's MixAudioEngine.
@@ -215,12 +217,12 @@ class MixAudioPlayerIos: ObservableObject {
         let steps = 30
         let stepInterval = Double(fadeInMs) / Double(steps) / 1000.0
         let target = track.volume
-        var step = 0
+        let counter = Counter()
         Timer.scheduledTimer(withTimeInterval: stepInterval, repeats: true) { [weak self] t in
-            step += 1
-            let f = Float(step) / Float(steps)
+            counter.value += 1
+            let f = Float(counter.value) / Float(steps)
             self?.mixerNodes[track.id]?.outputVolume = f * f * target
-            if step >= steps { t.invalidate() }
+            if counter.value >= steps { t.invalidate() }
         }
     }
 
@@ -253,19 +255,19 @@ class MixAudioPlayerIos: ObservableObject {
         let bpm = track.bpm ?? 120
         let accents = track.accents?.split(separator: ",").compactMap { Int($0) } ?? [1, 0, 0, 0]
         let intervalNs = UInt64(60_000_000_000 / bpm)
-        var beatIndex = 0
+        let beat = Counter()
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now(), repeating: .nanoseconds(Int(intervalNs)))
         timer.setEventHandler { [weak self] in
             guard let self, self.isClickRunning else { return }
-            let state = accents[beatIndex % accents.count]
+            let state = accents[beat.value % accents.count]
             if state != 2 && self.mutedTracks[track.id] != true {
                 let player = state == 1 ? self.accentPlayer : self.clickPlayer
                 player?.currentTime = 0
                 player?.volume = track.volume
                 player?.play()
             }
-            beatIndex += 1
+            beat.value += 1
         }
         timer.resume()
         clickTimer = timer

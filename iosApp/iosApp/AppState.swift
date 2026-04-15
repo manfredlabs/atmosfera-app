@@ -5,7 +5,7 @@ import Shared
 // MARK: - Swift mirror types
 // Pure Swift types used in SwiftUI views, mapped from Kotlin objects via KVC.
 
-struct SongItem: Identifiable, Equatable {
+struct SongItem: Identifiable, Equatable, Hashable {
     var id: Int64
     var name: String
     var note: String
@@ -28,7 +28,7 @@ struct SongItem: Identifiable, Equatable {
     }
 }
 
-struct SoundPackItem: Identifiable, Equatable {
+struct SoundPackItem: Identifiable, Equatable, Hashable {
     var id: Int64
     var name: String
     var description: String
@@ -45,7 +45,7 @@ struct SoundPadItem: Identifiable, Equatable {
     var createdAt: Int64
 }
 
-struct MixProjectItem: Identifiable, Equatable {
+struct MixProjectItem: Identifiable, Equatable, Hashable {
     var id: Int64
     var name: String
     var createdAt: Int64
@@ -309,8 +309,8 @@ class AppState: ObservableObject {
             let result = try await dbHelper.insertMixTrack(
                 projectId: projectId, trackType: trackType, label: label,
                 volume: volume, channel: channel, sortOrder: Int32(sortOrder),
-                note: note, padMode: padMode, soundPackId: soundPackId,
-                bpm: bpm.map { Int32($0) }, accents: accents,
+                note: note, padMode: padMode, soundPackId: soundPackId.map { KotlinLong(value: $0) },
+                bpm: bpm.map { KotlinInt(value: Int32($0)) }, accents: accents,
                 filePath: filePath, fileName: fileName
             )
             if let n = result as? NSNumber { return n.int64Value }

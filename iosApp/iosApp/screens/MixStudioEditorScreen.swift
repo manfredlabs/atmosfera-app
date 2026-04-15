@@ -212,7 +212,7 @@ private struct TrackRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: typeIcon)
-                .foregroundStyle(isPlaying ? .accentColor : .secondary)
+                .foregroundStyle(isPlaying ? Color.accentColor : .secondary)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {

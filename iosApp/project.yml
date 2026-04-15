@@ -2,7 +2,7 @@ name: iosApp
 options:
   bundleIdPrefix: com.manfredlabs.atmosfera
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
   xcodeVersion: latest
 
 settings:
@@ -17,7 +17,7 @@ targets:
   iosApp:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.manfredlabs.atmosfera

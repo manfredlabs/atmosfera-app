@@ -1,5 +1,7 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Combine
+
+private class Counter { var value = 0 }
 
 // MARK: - LiveAudioPlayerIos
 // iOS equivalent of Android's AudioEngine.
@@ -78,13 +80,13 @@ class LiveAudioPlayerIos: ObservableObject {
         let steps = 30
         let stepMs = Double(fadeInMs) / Double(steps) / 1000.0
         let target = padTargetVolume
-        var step = 0
+        let counter = Counter()
         fadeTimer?.invalidate()
         fadeTimer = Timer.scheduledTimer(withTimeInterval: stepMs, repeats: true) { [weak self] t in
-            step += 1
-            let fraction = Float(step) / Float(steps)
+            counter.value += 1
+            let fraction = Float(counter.value) / Float(steps)
             self?.padMixerNode?.outputVolume = fraction * fraction * target
-            if step >= steps { t.invalidate() }
+            if counter.value >= steps { t.invalidate() }
         }
     }
 
@@ -97,16 +99,16 @@ class LiveAudioPlayerIos: ObservableObject {
         let startVolume = mixer.outputVolume
         let steps = 30
         let stepMs = Double(fadeOutMs) / Double(steps) / 1000.0
-        var step = 0
+        let counter = Counter()
         let capturedPlayer = padPlayerNode
         let capturedMixer = padMixerNode
         padPlayerNode = nil
         padMixerNode = nil
         fadeTimer = Timer.scheduledTimer(withTimeInterval: stepMs, repeats: true) { [weak self] t in
-            step += 1
-            let fraction = 1.0 - Float(step) / Float(steps)
+            counter.value += 1
+            let fraction = 1.0 - Float(counter.value) / Float(steps)
             capturedMixer?.outputVolume = fraction * fraction * startVolume
-            if step >= steps {
+            if counter.value >= steps {
                 t.invalidate()
                 capturedPlayer?.stop()
                 if let p = capturedPlayer { self?.engine.detach(p) }
@@ -148,22 +150,22 @@ class LiveAudioPlayerIos: ObservableObject {
         currentAccents = accents
 
         let intervalNs = UInt64(60_000_000_000 / bpm)
-        var beatIndex = 0
+        let beat = Counter()
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now(), repeating: .nanoseconds(Int(intervalNs)))
         timer.setEventHandler { [weak self] in
             guard let self, self.isClickRunning else { return }
-            let state = self.currentAccents[beatIndex % self.currentAccents.count]
+            let state = self.currentAccents[beat.value % self.currentAccents.count]
             if state != 2 {
                 let player = state == 1 ? self.accentPlayer : self.clickPlayer
                 player?.currentTime = 0
                 player?.volume = self.currentClickVolume
                 player?.play()
             }
-            self.currentBeat = beatIndex % self.currentAccents.count
+            self.currentBeat = beat.value % self.currentAccents.count
             self.beatOn = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { self.beatOn = false }
-            beatIndex += 1
+            beat.value += 1
         }
         timer.resume()
         clickTimer = timer

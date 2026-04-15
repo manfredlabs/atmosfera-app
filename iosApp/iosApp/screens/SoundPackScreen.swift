@@ -22,7 +22,6 @@ struct SoundPackScreen: View {
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(Array(allNotes.enumerated()), id: \.offset) { idx, note in
                         ForEach(allModes, id: \.self) { mode in
-                            let key = "\(note):\(mode)"
                             let assigned = pads.first { $0.note == note && $0.mode == mode }
                             Button {
                                 selectedNote = note

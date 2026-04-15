@@ -9,6 +9,10 @@
 .cxx
 local.properties
 app/build/
+shared/build/
+iosApp/build/
+iosApp/*.xcodeproj/
+iosApp/*.xcworkspace/
 keystore.properties
 *.jks
 

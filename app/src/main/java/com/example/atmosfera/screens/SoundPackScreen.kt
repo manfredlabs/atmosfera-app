@@ -27,9 +27,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.atmosfera.audio.PadProcessor
-import com.example.atmosfera.data.SoundPad
-import com.example.atmosfera.data.SoundPackDao
-import com.example.atmosfera.data.SoundPack
+import com.manfredlabs.atmosfera.model.SoundPad
+import com.manfredlabs.atmosfera.db.SoundPackDao
+import com.manfredlabs.atmosfera.model.SoundPack
 import com.example.atmosfera.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

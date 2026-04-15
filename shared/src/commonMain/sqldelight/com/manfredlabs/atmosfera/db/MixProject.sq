@@ -1,0 +1,41 @@
+CREATE TABLE mix_projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    createdAt INTEGER NOT NULL,
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    inPlaylist INTEGER NOT NULL DEFAULT 0,
+    padVolume REAL NOT NULL DEFAULT 0.5,
+    padChannel TEXT NOT NULL DEFAULT 'mono',
+    clickVolume REAL NOT NULL DEFAULT 0.5,
+    clickChannel TEXT NOT NULL DEFAULT 'mono'
+);
+
+getAll:
+SELECT * FROM mix_projects ORDER BY sortOrder ASC, createdAt DESC;
+
+getAllInPlaylist:
+SELECT * FROM mix_projects WHERE inPlaylist = 1 ORDER BY sortOrder ASC, createdAt DESC;
+
+getById:
+SELECT * FROM mix_projects WHERE id = :id;
+
+insert:
+INSERT INTO mix_projects (name, createdAt, sortOrder, inPlaylist, padVolume, padChannel, clickVolume, clickChannel)
+VALUES (:name, :createdAt, :sortOrder, :inPlaylist, :padVolume, :padChannel, :clickVolume, :clickChannel);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+update:
+UPDATE mix_projects SET
+    name = :name,
+    sortOrder = :sortOrder,
+    inPlaylist = :inPlaylist,
+    padVolume = :padVolume,
+    padChannel = :padChannel,
+    clickVolume = :clickVolume,
+    clickChannel = :clickChannel
+WHERE id = :id;
+
+deleteById:
+DELETE FROM mix_projects WHERE id = :id;

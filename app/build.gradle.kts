@@ -3,7 +3,6 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -33,8 +32,8 @@ android {
         applicationId = "com.manfredlabs.atmosfera"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.2"
+        versionCode = 8
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,6 +59,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -71,9 +71,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
     implementation(libs.reorderable)
-    ksp(libs.androidx.room.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -2,9 +2,10 @@ package com.example.atmosfera.audio
 
 import android.content.Context
 import android.net.Uri
+import com.manfredlabs.atmosfera.audio.AudioFileStorage
 import java.io.File
 
-class MixFileManager(private val context: Context) {
+class MixFileManager(private val context: Context) : AudioFileStorage {
 
     private fun projectDir(projectId: Long): File =
         File(context.filesDir, "mixstudio/$projectId").also { it.mkdirs() }
@@ -22,15 +23,29 @@ class MixFileManager(private val context: Context) {
         return dest.absolutePath
     }
 
-    /** Delete a single track's audio file. */
-    fun deleteTrackFile(filePath: String) {
+    override fun copyAudioToMixStorage(projectId: Long, trackId: Long, sourceUri: String, displayName: String): String =
+        copyAudioToStorage(projectId, trackId, Uri.parse(sourceUri), displayName)
+
+    override fun deleteTrackFile(filePath: String) {
         val file = File(filePath)
         if (file.exists()) file.delete()
     }
 
-    /** Delete all files for a project. */
-    fun deleteProjectFiles(projectId: Long) {
+    override fun deleteProjectFiles(projectId: Long) {
         val dir = projectDir(projectId)
         if (dir.exists()) dir.deleteRecursively()
+    }
+
+    override fun copyPadAudio(sourceUri: String, destPath: String): Boolean {
+        val dest = File(destPath)
+        return try {
+            dest.parentFile?.mkdirs()
+            context.contentResolver.openInputStream(Uri.parse(sourceUri))?.use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            }
+            dest.exists() && dest.length() > 0
+        } catch (e: Exception) {
+            false
+        }
     }
 }

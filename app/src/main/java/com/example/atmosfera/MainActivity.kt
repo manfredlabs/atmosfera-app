@@ -32,15 +32,16 @@ import com.example.atmosfera.audio.AudioEngine
 import com.example.atmosfera.audio.MixAudioEngine
 import com.example.atmosfera.audio.MixFileManager
 import com.example.atmosfera.audio.PadProcessor
-import com.example.atmosfera.data.AppDatabase
-import com.example.atmosfera.data.SoundPack
-import com.example.atmosfera.data.SoundPad
-import com.example.atmosfera.model.ALL_NOTES
-import com.example.atmosfera.model.ClickChannel
-import com.example.atmosfera.model.PadChannel
-import com.example.atmosfera.model.availablePadsSet
-import com.example.atmosfera.model.toPadChannel
-import com.example.atmosfera.model.toClickChannel
+import com.manfredlabs.atmosfera.db.AtmosDb
+import com.manfredlabs.atmosfera.db.DatabaseDriverFactory
+import com.manfredlabs.atmosfera.model.SoundPack
+import com.manfredlabs.atmosfera.model.SoundPad
+import com.manfredlabs.atmosfera.model.ALL_NOTES
+import com.manfredlabs.atmosfera.model.ClickChannel
+import com.manfredlabs.atmosfera.model.PadChannel
+import com.manfredlabs.atmosfera.model.availablePadsSet
+import com.manfredlabs.atmosfera.model.toPadChannel
+import com.manfredlabs.atmosfera.model.toClickChannel
 import com.example.atmosfera.screens.AddSongScreen
 import com.example.atmosfera.screens.HomeScreen
 import com.example.atmosfera.screens.LabsScreen
@@ -91,10 +92,26 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route ?: "home"
                 val showBottomBar = currentRoute in listOf("home", "playlist", "settings", "pack_selector", "labs")
-                val db = remember { AppDatabase.getInstance(this@MainActivity) }
-                val songDao = remember { db.songDao() }
-                val soundPackDao = remember { db.soundPackDao() }
-                val mixProjectDao = remember { db.mixProjectDao() }
+                val db = remember { AtmosDb(DatabaseDriverFactory(this@MainActivity)) }
+                val songDao = remember { db.songDao }
+                val soundPackDao = remember { db.soundPackDao }
+                val mixProjectDao = remember { db.mixProjectDao }
+
+                // Ensure default Atmos sound pack exists (replaces Room onOpen callback)
+                LaunchedEffect(Unit) {
+                    if (!prefs.getBoolean("default_pack_checked", false)) {
+                        val packs = soundPackDao.getDefault()
+                        if (packs == null) {
+                            soundPackDao.insert(
+                                com.manfredlabs.atmosfera.model.SoundPack(
+                                    id = 0L, name = "Atmos", description = "", isDefault = true,
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                        prefs.edit().putBoolean("default_pack_checked", true).apply()
+                    }
+                }
                 val padProcessor = remember { PadProcessor(this@MainActivity) }
                 val soundPackDir = remember { java.io.File(filesDir, "soundpacks").also { it.mkdirs() } }
 

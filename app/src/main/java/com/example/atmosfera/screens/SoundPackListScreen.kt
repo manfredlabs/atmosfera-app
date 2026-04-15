@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.atmosfera.data.SoundPack
+import com.manfredlabs.atmosfera.model.SoundPack
 import com.example.atmosfera.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt

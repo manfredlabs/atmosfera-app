@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.atmosfera.data.SoundPack
-import com.example.atmosfera.model.Note
+import com.manfredlabs.atmosfera.model.SoundPack
+import com.manfredlabs.atmosfera.model.Note
 import com.example.atmosfera.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

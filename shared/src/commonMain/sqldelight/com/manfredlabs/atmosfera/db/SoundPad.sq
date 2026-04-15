@@ -1,0 +1,29 @@
+CREATE TABLE sound_pads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    packId INTEGER NOT NULL REFERENCES sound_packs(id) ON DELETE CASCADE,
+    note TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    filePath TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
+);
+
+CREATE INDEX index_sound_pads_packId ON sound_pads(packId);
+
+getPadsForPack:
+SELECT * FROM sound_pads WHERE packId = :packId;
+
+getPad:
+SELECT * FROM sound_pads WHERE packId = :packId AND note = :note AND mode = :mode LIMIT 1;
+
+insert:
+INSERT INTO sound_pads (packId, note, mode, filePath, createdAt)
+VALUES (:packId, :note, :mode, :filePath, :createdAt);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+deleteById:
+DELETE FROM sound_pads WHERE id = :id;
+
+removePad:
+DELETE FROM sound_pads WHERE packId = :packId AND note = :note AND mode = :mode;

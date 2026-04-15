@@ -44,11 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
-import com.example.atmosfera.data.MixProject
-import com.example.atmosfera.data.MixProjectDao
-import com.example.atmosfera.data.MixTrack
-import com.example.atmosfera.data.SoundPack
-import com.example.atmosfera.data.SoundPackDao
+import com.manfredlabs.atmosfera.model.MixProject
+import com.manfredlabs.atmosfera.db.MixProjectDao
+import com.manfredlabs.atmosfera.model.MixTrack
+import com.manfredlabs.atmosfera.model.SoundPack
+import com.manfredlabs.atmosfera.db.SoundPackDao
 import com.example.atmosfera.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,10 +71,11 @@ fun MixStudioListScreen(
     val projects by mixDao.getAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+    Box(modifier = Modifier.fillMaxSize().background(DarkBg), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
+                .widthIn(max = 600.dp)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             // Header with back button
@@ -582,10 +583,11 @@ fun MixStudioEditorScreen(
     // Intercept system back (gesture / hardware button)
     BackHandler { handleBack() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
+                .widthIn(max = 600.dp)
                 .background(DarkBg)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),

@@ -54,11 +54,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.example.atmosfera.data.Song
-import com.example.atmosfera.data.SongDao
-import com.example.atmosfera.data.MixProject
-import com.example.atmosfera.data.MixProjectDao
-import com.example.atmosfera.data.MixTrack
+import com.manfredlabs.atmosfera.model.Song
+import com.manfredlabs.atmosfera.db.SongDao
+import com.manfredlabs.atmosfera.model.MixProject
+import com.manfredlabs.atmosfera.db.MixProjectDao
+import com.manfredlabs.atmosfera.model.MixTrack
 import com.example.atmosfera.ui.theme.*
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
@@ -105,7 +105,7 @@ fun PlaylistScreen(
     onNavigateToEditSong: (Long) -> Unit,
     isLocked: Boolean = false,
     onToggleLock: () -> Unit = {},
-    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList(),
+    allPacks: List<com.manfredlabs.atmosfera.model.SoundPack> = emptyList(),
     // Mix Studio integration
     mixProjectDao: MixProjectDao? = null,
     playingMixId: Long? = null,
@@ -143,10 +143,11 @@ fun PlaylistScreen(
         (songItems + mixItems).sortedWith(compareBy<PlaylistItem> { it.sortKey }.thenByDescending { it.createdAt })
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
+                .widthIn(max = 600.dp)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             // Header

@@ -35,8 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.atmosfera.data.Song
-import com.example.atmosfera.data.SongDao
+import com.manfredlabs.atmosfera.model.Song
+import com.manfredlabs.atmosfera.db.SongDao
 import com.example.atmosfera.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -54,9 +54,9 @@ fun AddSongScreen(
     songDao: SongDao,
     onBack: () -> Unit,
     editSongId: Long? = null,
-    allPacks: List<com.example.atmosfera.data.SoundPack> = emptyList(),
+    allPacks: List<com.manfredlabs.atmosfera.model.SoundPack> = emptyList(),
     currentPackId: Long = -1L,
-    soundPackDao: com.example.atmosfera.data.SoundPackDao? = null,
+    soundPackDao: com.manfredlabs.atmosfera.db.SoundPackDao? = null,
     liveBpm: Int = 90,
     liveAccents: List<Int> = listOf(1, 0, 0, 0),
     liveClickEnabled: Boolean = true,
@@ -245,10 +245,14 @@ fun AddSongScreen(
         }
     }
 
+    Box(
+        modifier = Modifier.fillMaxSize().background(DarkBg),
+        contentAlignment = Alignment.TopCenter
+    ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg)
+            .fillMaxHeight()
+            .widthIn(max = 600.dp)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -780,6 +784,7 @@ fun AddSongScreen(
             }
         }
     }
+    } // Box
 }
 
 @Composable

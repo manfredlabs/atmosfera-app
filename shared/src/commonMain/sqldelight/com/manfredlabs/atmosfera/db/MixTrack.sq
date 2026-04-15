@@ -1,0 +1,53 @@
+CREATE TABLE mix_tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    projectId INTEGER NOT NULL REFERENCES mix_projects(id) ON DELETE CASCADE,
+    trackType TEXT NOT NULL,
+    label TEXT NOT NULL,
+    volume REAL NOT NULL DEFAULT 0.5,
+    channel TEXT NOT NULL DEFAULT 'mono',
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    note TEXT,
+    padMode TEXT,
+    soundPackId INTEGER,
+    bpm INTEGER,
+    accents TEXT,
+    filePath TEXT,
+    fileName TEXT
+);
+
+CREATE INDEX index_mix_tracks_projectId ON mix_tracks(projectId);
+
+getTracksForProject:
+SELECT * FROM mix_tracks WHERE projectId = :projectId ORDER BY sortOrder ASC;
+
+getTrackCount:
+SELECT COUNT(*) FROM mix_tracks WHERE projectId = :projectId;
+
+insert:
+INSERT INTO mix_tracks (projectId, trackType, label, volume, channel, sortOrder, note, padMode, soundPackId, bpm, accents, filePath, fileName)
+VALUES (:projectId, :trackType, :label, :volume, :channel, :sortOrder, :note, :padMode, :soundPackId, :bpm, :accents, :filePath, :fileName);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+update:
+UPDATE mix_tracks SET
+    trackType = :trackType,
+    label = :label,
+    volume = :volume,
+    channel = :channel,
+    sortOrder = :sortOrder,
+    note = :note,
+    padMode = :padMode,
+    soundPackId = :soundPackId,
+    bpm = :bpm,
+    accents = :accents,
+    filePath = :filePath,
+    fileName = :fileName
+WHERE id = :id;
+
+deleteById:
+DELETE FROM mix_tracks WHERE id = :id;
+
+deleteTracksForProject:
+DELETE FROM mix_tracks WHERE projectId = :projectId;

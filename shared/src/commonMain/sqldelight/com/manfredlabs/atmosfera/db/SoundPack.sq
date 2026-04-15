@@ -1,0 +1,33 @@
+CREATE TABLE sound_packs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    isDefault INTEGER NOT NULL DEFAULT 0,
+    createdAt INTEGER NOT NULL
+);
+
+getAll:
+SELECT * FROM sound_packs ORDER BY isDefault DESC, name ASC;
+
+getById:
+SELECT * FROM sound_packs WHERE id = :id;
+
+getDefault:
+SELECT * FROM sound_packs WHERE isDefault = 1 LIMIT 1;
+
+insert:
+INSERT INTO sound_packs (name, description, isDefault, createdAt)
+VALUES (:name, :description, :isDefault, :createdAt);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+update:
+UPDATE sound_packs SET
+    name = :name,
+    description = :description,
+    isDefault = :isDefault
+WHERE id = :id;
+
+deleteById:
+DELETE FROM sound_packs WHERE id = :id;

@@ -15,8 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.atmosfera.model.ClickChannel
-import com.example.atmosfera.model.PadChannel
+import com.manfredlabs.atmosfera.model.ClickChannel
+import com.manfredlabs.atmosfera.model.PadChannel
 import com.example.atmosfera.ui.theme.*
 
 @Composable

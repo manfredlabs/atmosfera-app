@@ -1,0 +1,52 @@
+CREATE TABLE songs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    note TEXT NOT NULL,
+    isMajor INTEGER NOT NULL DEFAULT 1,
+    bpm INTEGER NOT NULL,
+    accents TEXT NOT NULL DEFAULT '1,0,0,0',
+    padEnabled INTEGER NOT NULL DEFAULT 1,
+    clickEnabled INTEGER NOT NULL DEFAULT 1,
+    createdAt INTEGER NOT NULL,
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    padMode TEXT NOT NULL DEFAULT 'maj',
+    soundPackId INTEGER NOT NULL DEFAULT -1,
+    padVolume REAL NOT NULL DEFAULT 0.5,
+    padChannel TEXT NOT NULL DEFAULT 'mono',
+    clickVolume REAL NOT NULL DEFAULT 0.5,
+    clickChannel TEXT NOT NULL DEFAULT 'mono'
+);
+
+getAll:
+SELECT * FROM songs ORDER BY sortOrder ASC, createdAt DESC;
+
+getById:
+SELECT * FROM songs WHERE id = :id;
+
+insert:
+INSERT INTO songs (name, note, isMajor, bpm, accents, padEnabled, clickEnabled, createdAt, sortOrder, padMode, soundPackId, padVolume, padChannel, clickVolume, clickChannel)
+VALUES (:name, :note, :isMajor, :bpm, :accents, :padEnabled, :clickEnabled, :createdAt, :sortOrder, :padMode, :soundPackId, :padVolume, :padChannel, :clickVolume, :clickChannel);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+deleteById:
+DELETE FROM songs WHERE id = :id;
+
+update:
+UPDATE songs SET
+    name = :name,
+    note = :note,
+    isMajor = :isMajor,
+    bpm = :bpm,
+    accents = :accents,
+    padEnabled = :padEnabled,
+    clickEnabled = :clickEnabled,
+    sortOrder = :sortOrder,
+    padMode = :padMode,
+    soundPackId = :soundPackId,
+    padVolume = :padVolume,
+    padChannel = :padChannel,
+    clickVolume = :clickVolume,
+    clickChannel = :clickChannel
+WHERE id = :id;

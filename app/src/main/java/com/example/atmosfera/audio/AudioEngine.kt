@@ -17,19 +17,20 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import com.example.atmosfera.model.ClickChannel
-import com.example.atmosfera.model.PadChannel
+import com.manfredlabs.atmosfera.audio.LiveAudioPlayer
+import com.manfredlabs.atmosfera.model.ClickChannel
+import com.manfredlabs.atmosfera.model.PadChannel
 
-class AudioEngine(private val context: Context) {
+class AudioEngine(private val context: Context) : LiveAudioPlayer {
 
     private var player: ExoPlayer? = null
     private val padHandler = Handler(Looper.getMainLooper())
     private val retireHandler = Handler(Looper.getMainLooper())
     private val clickHandler = Handler(Looper.getMainLooper())
-    var padTargetVolume = 0.5f
+    override var padTargetVolume = 0.5f
 
-    @Volatile var fadeInMs = 2000L
-    @Volatile var fadeOutMs = 1500L
+    override @Volatile var fadeInMs = 2000L
+    override @Volatile var fadeOutMs = 1500L
     private val fadeSteps = 30
 
     private lateinit var soundPool: SoundPool
@@ -37,9 +38,9 @@ class AudioEngine(private val context: Context) {
     private var accentSoundId: Int = 0
     private var isClickRunning = false
     private var clickRunnable: Runnable? = null
-    var currentClickVolume = 0.5f
-    var currentClickChannel = ClickChannel.MONO
-    var currentAccents: List<Int> = listOf(1, 0, 0, 0)
+    override var currentClickVolume = 0.5f
+    override var currentClickChannel = ClickChannel.MONO
+    override var currentAccents: List<Int> = listOf(1, 0, 0, 0)
 
     val beatOn = mutableStateOf(false)
     val currentBeat = mutableIntStateOf(0)
@@ -50,7 +51,7 @@ class AudioEngine(private val context: Context) {
     private var retiringPlayer: ExoPlayer? = null
 
     /** Current pad volume (for external adjustments) */
-    var padVolume: Float
+    override var padVolume: Float
         get() = player?.volume ?: 0f
         set(value) { player?.volume = value }
 
@@ -92,7 +93,7 @@ class AudioEngine(private val context: Context) {
     }
 
     @OptIn(UnstableApi::class)
-    fun startPad(rawResName: String, padCh: PadChannel) {
+    override fun startPad(rawResName: String, padCh: PadChannel) {
         val resId = context.resources.getIdentifier(rawResName, "raw", context.packageName)
         val uri = "android.resource://${context.packageName}/$resId"
         startPadFromUri(uri, padCh)
@@ -100,7 +101,7 @@ class AudioEngine(private val context: Context) {
 
     /** Play a pad from a file path (custom sound packs). */
     @OptIn(UnstableApi::class)
-    fun startPadFromFile(filePath: String, padCh: PadChannel) {
+    override fun startPadFromFile(filePath: String, padCh: PadChannel) {
         val uri = android.net.Uri.fromFile(java.io.File(filePath)).toString()
         startPadFromUri(uri, padCh)
     }
@@ -163,7 +164,7 @@ class AudioEngine(private val context: Context) {
         }
     }
 
-    fun stopPad(onComplete: (() -> Unit)? = null) {
+    override fun stopPad(onComplete: (() -> Unit)?) {
         padHandler.removeCallbacksAndMessages(null)
 
         val current = player
@@ -184,14 +185,14 @@ class AudioEngine(private val context: Context) {
         }
     }
 
-    fun stopPadImmediate() {
+    override fun stopPadImmediate() {
         padHandler.removeCallbacksAndMessages(null)
         killRetiring()
         player?.let { try { it.release() } catch (_: Exception) {} }
         player = null
     }
 
-    fun startClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
+    override fun startClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
         isClickRunning = true
         currentClickVolume = volume
         currentClickChannel = channel
@@ -224,7 +225,7 @@ class AudioEngine(private val context: Context) {
         clickHandler.post(clickRunnable!!)
     }
 
-    fun stopClick() {
+    override fun stopClick() {
         isClickRunning = false
         beatOn.value = false
         currentBeat.intValue = 0
@@ -232,12 +233,12 @@ class AudioEngine(private val context: Context) {
         clickRunnable = null
     }
 
-    fun restartClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
+    override fun restartClick(bpm: Int, channel: ClickChannel, volume: Float, accents: List<Int>) {
         stopClick()
         startClick(bpm, channel, volume, accents)
     }
 
-    fun updatePadPanning(channel: PadChannel) {
+    override fun updatePadPanning(channel: PadChannel) {
         channelMixer?.let { applyPadPanning(it, channel) }
     }
 
@@ -255,7 +256,7 @@ class AudioEngine(private val context: Context) {
         )
     }
 
-    fun release() {
+    override fun release() {
         stopClick()
         stopPadImmediate()
         soundPool.release()

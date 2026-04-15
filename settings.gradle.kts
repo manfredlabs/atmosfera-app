@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Atmosfera"
 include(":app")
+include(":shared")

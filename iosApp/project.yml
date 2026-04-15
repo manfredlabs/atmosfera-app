@@ -25,6 +25,7 @@ targets:
         PROVISIONING_PROFILE_SPECIFIER: atmosfera
         CODE_SIGN_IDENTITY: "Apple Distribution"
         OTHER_LDFLAGS: $(inherited) -framework Shared -lsqlite3
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: iosApp/Info.plist
       properties:
@@ -48,12 +49,13 @@ targets:
         UIBackgroundModes:
           - audio
         NSMicrophoneUsageDescription: "Atmosfera needs microphone access for tap tempo."
+        CFBundleIconName: AppIcon
     sources:
       - path: iosApp
         excludes:
           - "Info.plist"
     resources:
-      - path: iosApp/Assets.xcassets
+      - path: Assets.xcassets
       - path: iosApp/Resources
         optional: true
     dependencies:

@@ -54,10 +54,6 @@ workflows:
         - pattern: main
           include: true
     scripts:
-      - name: Set up code signing
-        script: |
-          xcode-project use-profiles \
-            --project iosApp/iosApp.xcodeproj
       - name: Build KMP shared framework
         script: |
           chmod +x gradlew
@@ -68,6 +64,10 @@ workflows:
       - name: Generate Xcode project
         script: |
           cd iosApp && xcodegen generate
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles \
+            --project iosApp/iosApp.xcodeproj
       - name: Build iOS archive
         script: |
           xcodebuild -project iosApp/iosApp.xcodeproj \

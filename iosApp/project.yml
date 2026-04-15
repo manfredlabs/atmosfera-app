@@ -50,15 +50,18 @@ targets:
       - path: iosApp/Resources
         optional: true
     dependencies:
-      - framework: ../shared/build/XCFrameworks/release/Shared.xcframework
+      - framework: ../shared/build/bin/iosArm64/releaseFramework/Shared.framework
         embed: false
     preBuildScripts:
       - name: Build KMP Shared Framework
         script: |
           cd "$SRCROOT/.."
           export JAVA_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home)
-          ./gradlew :shared:assembleXCFramework
+          chmod +x gradlew
+          ./gradlew :shared:linkReleaseFrameworkIosArm64
         basedOnDependencyAnalysis: false
     settings:
       base:
-        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../shared/build/XCFrameworks/release/Shared.xcframework
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/../shared/build/bin/iosArm64/releaseFramework
+        PROVISIONING_PROFILE_SPECIFIER: atmosfera
+        CODE_SIGN_IDENTITY: "Apple Distribution"

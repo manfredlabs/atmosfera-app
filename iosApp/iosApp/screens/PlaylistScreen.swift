@@ -347,7 +347,7 @@ private struct SongCardView: View {
                         Image(systemName: "pencil")
                             .font(.system(size: 22))
                             .foregroundColor(.ledAmber)
-                            .frame(width: 70, maxHeight: .infinity)
+                            .frame(minWidth: 70, maxWidth: 70, maxHeight: .infinity)
                     }
                     .background(Color.padIdle)
 
@@ -358,7 +358,7 @@ private struct SongCardView: View {
                         Image(systemName: "trash")
                             .font(.system(size: 22))
                             .foregroundColor(Color(red: 1, green: 0.42, blue: 0.42))
-                            .frame(width: 70, maxHeight: .infinity)
+                            .frame(minWidth: 70, maxWidth: 70, maxHeight: .infinity)
                     }
                     .background(Color.padIdle)
                 }
@@ -543,7 +543,7 @@ private struct MixCardView: View {
                         Image(systemName: "trash")
                             .font(.system(size: 22))
                             .foregroundColor(Color(red: 1, green: 0.42, blue: 0.42))
-                            .frame(width: 70, maxHeight: .infinity)
+                            .frame(minWidth: 70, maxWidth: 70, maxHeight: .infinity)
                     }
                     .background(Color.padIdle)
                 }

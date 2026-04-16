@@ -63,6 +63,7 @@ targets:
           - "Info.plist"
     resources:
       - path: iosApp/Assets.xcassets
+      - path: iosApp/Fonts
       - path: iosApp/Resources
         optional: true
     dependencies:

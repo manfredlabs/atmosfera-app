@@ -90,18 +90,21 @@ struct PillSelector: View {
                     selected = option
                 } label: {
                     Text(option)
-                        .font(.spaceGrotesk(.medium, size: 13))
-                        .foregroundColor(selected == option ? .darkBg : .textOnPad)
+                        .font(.spaceGrotesk(.bold, size: 13))
+                        .foregroundColor(selected == option ? .textPrimary : .textOnPad)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(selected == option ? activeColor : inactiveColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
         }
+        .padding(3)
+        .background(Color.padIdle)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.padBorder, lineWidth: 1)
+                .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
         )
     }
 }
@@ -143,27 +146,42 @@ struct AmberSlider: View {
 struct ChannelPills: View {
     @Binding var channel: String
     var activeColor: Color = .ledAmber
+    var dimColor: Color = .ledAmber
 
     var body: some View {
-        PillSelector(
-            options: ["L", "M", "R"],
-            selected: Binding(
-                get: {
+        HStack(spacing: 0) {
+            ForEach(["L", "M", "R"], id: \.self) { val in
+                let isSelected: Bool = {
                     switch channel.lowercased() {
-                    case "left": return "L"
-                    case "right": return "R"
-                    default: return "M"
+                    case "left": return val == "L"
+                    case "right": return val == "R"
+                    default: return val == "M"
                     }
-                },
-                set: { val in
+                }()
+
+                Button {
                     switch val {
                     case "L": channel = "left"
                     case "R": channel = "right"
                     default: channel = "mono"
                     }
+                } label: {
+                    Text(val)
+                        .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
+                        .foregroundColor(isSelected ? activeColor : .textSecondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(isSelected ? activeColor.opacity(0.15) : Color.padIdle)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
-            ),
-            activeColor: activeColor
+                .padding(3)
+            }
+        }
+        .frame(height: 40)
+        .background(Color.padIdle)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
         )
     }
 }

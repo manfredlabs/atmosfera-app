@@ -22,6 +22,8 @@ struct AddSongScreen: View {
     @State private var clickVolume: Double = 0.5
     @State private var padChannel = "mono"
     @State private var clickChannel = "mono"
+    @State private var timeSignature = "4/4"
+    @State private var showPackSheet = false
     @FocusState private var nameFieldFocused: Bool
 
     private var isEditMode: Bool { existingSong != nil }
@@ -55,6 +57,27 @@ struct AddSongScreen: View {
                             .onChange(of: name) { _, new in
                                 if new.count > 30 { name = String(new.prefix(30)) }
                             }
+                    }
+
+                    // ─── Sound Pack ───
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionHeader(title: "SOUND PACK")
+                        Button { showPackSheet = true } label: {
+                            HStack {
+                                Text(appState.allPacks.first { $0.id == appState.currentPackId }?.name ?? "Atmos")
+                                    .font(.spaceGrotesk(.regular, size: 15))
+                                    .foregroundColor(.textPrimary)
+                                Spacer()
+                                Text("▼")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.textSecondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .background(Color.padIdle)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(0.3), lineWidth: 1))
+                        }
                     }
 
                     // ─── Key ───
@@ -102,6 +125,9 @@ struct AddSongScreen: View {
                         } else {
                             // Click ON + BPM controls
                             clickRow
+
+                            // Time Signature
+                            timeSignatureGrid
 
                             // Accent circles
                             accentRow
@@ -151,6 +177,86 @@ struct AddSongScreen: View {
             }
         }
         .onAppear { populateFromExisting() }
+        .sheet(isPresented: $showPackSheet) { packSheet }
+    }
+
+    // MARK: - Time Signature Grid
+
+    private var timeSignatureGrid: some View {
+        let signatures = ["2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8"]
+        let rows = stride(from: 0, to: signatures.count, by: 4).map {
+            Array(signatures[$0..<min($0+4, signatures.count)])
+        }
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "TIME SIGNATURE")
+            ForEach(rows.indices, id: \.self) { rowIdx in
+                HStack(spacing: 6) {
+                    ForEach(rows[rowIdx], id: \.self) { sig in
+                        let isSelected = timeSignature == sig
+                        Button {
+                            timeSignature = sig
+                            let beats = Int(sig.split(separator: "/").first ?? "4") ?? 4
+                            accents = (0..<beats).map { $0 == 0 ? 1 : 0 }
+                        } label: {
+                            Text(sig)
+                                .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
+                                .foregroundColor(isSelected ? .clickTeal : .textSecondary.opacity(0.7))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(isSelected ? Color.clickTeal.opacity(0.15) : Color.padIdle)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(isSelected ? Color.clickTeal.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Pack Sheet
+
+    private var packSheet: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SectionHeader(title: "SOUND PACK")
+                .padding(.bottom, 4)
+            ForEach(appState.allPacks) { pack in
+                let isSelected = appState.currentPackId == pack.id
+                Button {
+                    appState.currentPackId = pack.id
+                    appState.saveSettings()
+                    Task { await appState.refreshPads(packId: pack.id) }
+                    showPackSheet = false
+                } label: {
+                    HStack {
+                        Text(pack.name)
+                            .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 15))
+                            .foregroundColor(isSelected ? .ledAmber : .textSecondary)
+                        Spacer()
+                        if isSelected {
+                            Text("✓")
+                                .font(.system(size: 14))
+                                .foregroundColor(.ledAmber)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(height: 48)
+                    .background(isSelected ? Color.ledAmber.opacity(0.15) : Color.padIdle)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? Color.ledAmber : Color.padBorder.opacity(0.3), lineWidth: 1)
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.darkBg)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 
     // MARK: - Note Grid 4×3
@@ -299,7 +405,14 @@ struct AddSongScreen: View {
     // MARK: - Data
 
     private func populateFromExisting() {
-        guard let s = existingSong else { return }
+        guard let s = existingSong else {
+            // Auto-generate name for new songs
+            let maxNum = appState.allSongs
+                .compactMap { $0.name.hasPrefix("MySong#") ? Int($0.name.dropFirst(7)) : nil }
+                .max() ?? 0
+            name = "MySong#\(maxNum + 1)"
+            return
+        }
         name = s.name
         selectedNote = s.note
         padMode = s.padMode
@@ -311,6 +424,8 @@ struct AddSongScreen: View {
         clickVolume = Double(s.clickVolume)
         padChannel = s.padChannel
         clickChannel = s.clickChannel
+        let beats = accents.count
+        timeSignature = [2: "2/4", 3: "3/4", 5: "5/4", 6: "6/4", 7: "7/4"][beats] ?? "4/4"
     }
 
     private func save() {

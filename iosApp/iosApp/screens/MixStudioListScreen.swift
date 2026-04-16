@@ -120,23 +120,6 @@ struct MixStudioListScreen: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { selectedProject = project }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                projectToDelete = project
-            } label: { Label("Delete", systemImage: "trash") }
-        }
-        .swipeActions(edge: .leading) {
-            Button {
-                Task {
-                    await appState.toggleMixProjectInPlaylist(id: project.id)
-                    projects = appState.allMixProjects
-                }
-            } label: {
-                Label(project.inPlaylist ? "Remove" : "Playlist",
-                      systemImage: project.inPlaylist ? "minus.circle" : "plus.circle")
-            }
-            .tint(project.inPlaylist ? .orange : .labsPurple)
-        }
         .contextMenu {
             Button { selectedProject = project } label: {
                 Label("Edit", systemImage: "pencil")

@@ -105,6 +105,7 @@ class AppState: ObservableObject {
     @Published var clickChannel: String = "mono"
     @Published var fadeInMs: Int64 = 2000
     @Published var fadeOutMs: Int64 = 1500
+    @Published var timeSignature: String = "4/4"
 
     private var cancellables = Set<AnyCancellable>()
     private let defaults = UserDefaults.standard
@@ -258,6 +259,12 @@ class AppState: ObservableObject {
         await refreshPacks()
     }
 
+    func renameSoundPack(id: Int64, name: String) async {
+        do { try await dbHelper.renameSoundPack(id: id, name: name) }
+        catch { print("renameSoundPack: \(error)") }
+        await refreshPacks()
+    }
+
     func setDefaultPack(id: Int64) async {
         do { try await dbHelper.setDefaultPack(id: id) }
         catch { print("setDefaultPack: \(error)") }
@@ -299,6 +306,12 @@ class AppState: ObservableObject {
     func toggleMixProjectInPlaylist(id: Int64) async {
         do { try await dbHelper.toggleMixProjectInPlaylist(id: id) }
         catch { print("toggleMixProjectInPlaylist: \(error)") }
+        await refreshMixProjects()
+    }
+
+    func renameMixProject(id: Int64, name: String) async {
+        do { try await dbHelper.renameMixProject(id: id, name: name) }
+        catch { print("renameMixProject: \(error)") }
         await refreshMixProjects()
     }
 
@@ -350,6 +363,7 @@ class AppState: ObservableObject {
         defaults.set(fadeInMs, forKey: "fadeInMs")
         defaults.set(fadeOutMs, forKey: "fadeOutMs")
         defaults.set(currentPackId, forKey: "currentPackId")
+        defaults.set(timeSignature, forKey: "timeSignature")
     }
 
     func loadSettings() {
@@ -360,6 +374,7 @@ class AppState: ObservableObject {
         fadeInMs = Int64(defaults.integer(forKey: "fadeInMs")).nonZeroOr(2000)
         fadeOutMs = Int64(defaults.integer(forKey: "fadeOutMs")).nonZeroOr(1500)
         currentPackId = Int64(defaults.integer(forKey: "currentPackId").nonZeroOr(-1))
+        timeSignature = defaults.string(forKey: "timeSignature") ?? "4/4"
     }
 
     // MARK: - Default pack bootstrap

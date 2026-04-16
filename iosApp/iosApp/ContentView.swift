@@ -7,6 +7,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
+            Color.darkBg.ignoresSafeArea()
+
             TabView(selection: $selectedTab) {
                 HomeScreen()
                     .tabItem {
@@ -26,12 +28,15 @@ struct ContentView: View {
                     }
                     .tag(2)
 
-                SettingsScreen()
+                NavigationStack {
+                    SettingsScreen()
+                }
                     .tabItem {
                         Label("Settings", systemImage: "gearshape")
                     }
                     .tag(3)
             }
+            .tint(.ledAmber)
 
             if let err = loadError {
                 Color.black.opacity(0.8).ignoresSafeArea()
@@ -42,6 +47,7 @@ struct ContentView: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
         .task {
             do {
                 try await appState.loadInitialData()

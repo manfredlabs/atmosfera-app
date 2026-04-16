@@ -9,9 +9,8 @@ struct SoundPackListScreen: View {
     @State private var packToDelete: SoundPackItem? = nil
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Color.darkBg.ignoresSafeArea()
+        ZStack(alignment: .bottomTrailing) {
+            Color.darkBg.ignoresSafeArea()
 
                 VStack(spacing: 16) {
                     ScreenHeader(title: "SOUND PACKS")
@@ -57,29 +56,28 @@ struct SoundPackListScreen: View {
                 }
                 .padding(24)
             }
-            .navigationBarHidden(true)
-            .alert("New Sound Pack", isPresented: $showCreate) {
-                TextField("Name", text: $newPackName)
-                Button("Create") {
-                    guard !newPackName.isEmpty else { return }
-                    let name = newPackName
-                    newPackName = ""
-                    Task {
-                        await appState.createSoundPack(name: name)
-                        packs = appState.allPacks
-                    }
+        .navigationBarHidden(true)
+        .alert("New Sound Pack", isPresented: $showCreate) {
+            TextField("Name", text: $newPackName)
+            Button("Create") {
+                guard !newPackName.isEmpty else { return }
+                let name = newPackName
+                newPackName = ""
+                Task {
+                    await appState.createSoundPack(name: name)
+                    packs = appState.allPacks
                 }
-                Button("Cancel", role: .cancel) { newPackName = "" }
             }
-            .sheet(item: $packToDelete) { pack in
-                deleteSheet(pack)
-            }
-            .navigationDestination(item: $selectedPack) { pack in
-                SoundPackScreen(pack: pack)
-            }
-            .task { await appState.refreshPacks(); packs = appState.allPacks }
-            .onChange(of: appState.allPacks) { _, new in packs = new }
+            Button("Cancel", role: .cancel) { newPackName = "" }
         }
+        .sheet(item: $packToDelete) { pack in
+            deleteSheet(pack)
+        }
+        .navigationDestination(item: $selectedPack) { pack in
+            SoundPackScreen(pack: pack)
+        }
+        .task { await appState.refreshPacks(); packs = appState.allPacks }
+        .onChange(of: appState.allPacks) { _, new in packs = new }
     }
 
     // MARK: - Pack Card
@@ -107,13 +105,6 @@ struct SoundPackListScreen: View {
             appState.saveSettings()
             Task { await appState.refreshPads(packId: pack.id) }
             if !pack.isDefault { selectedPack = pack }
-        }
-        .swipeActions(edge: .trailing) {
-            if !pack.isDefault {
-                Button(role: .destructive) {
-                    packToDelete = pack
-                } label: { Label("Delete", systemImage: "trash") }
-            }
         }
         .contextMenu {
             if !pack.isDefault {

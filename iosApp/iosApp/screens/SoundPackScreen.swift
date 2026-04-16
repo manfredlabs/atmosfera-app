@@ -14,6 +14,7 @@ struct SoundPackScreen: View {
     @State private var selectedNote = ""
     @State private var selectedMode = ""
     @State private var showFilePicker = false
+    @State private var packName = ""
 
     var body: some View {
         ZStack {
@@ -24,20 +25,26 @@ struct SoundPackScreen: View {
                     ScreenHeader(title: "SOUND PACK")
                         .padding(.top, 8)
 
-                    // Name (read-only display)
+                    // Editable name
                     VStack(alignment: .leading, spacing: 8) {
                         SectionHeader(title: "NAME")
-                        Text(pack.name)
+                        TextField("e.g. Warm Pads", text: $packName)
                             .font(.spaceGrotesk(.regular, size: 18))
                             .foregroundColor(.textPrimary)
                             .padding(.horizontal, 16)
-                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                            .frame(height: 48)
                             .background(Color.padIdle)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
                             )
+                            .autocorrectionDisabled()
+                            .onChange(of: packName) { _, newName in
+                                if newName.count > 20 { packName = String(newName.prefix(20)) }
+                                guard !newName.isEmpty else { return }
+                                Task { await appState.renameSoundPack(id: pack.id, name: newName) }
+                            }
                     }
 
                     // Mode pill
@@ -70,6 +77,7 @@ struct SoundPackScreen: View {
         .task {
             await appState.refreshPads(packId: pack.id)
             pads = appState.currentPads
+            packName = pack.name
         }
         .onChange(of: appState.currentPads) { _, new in pads = new }
     }

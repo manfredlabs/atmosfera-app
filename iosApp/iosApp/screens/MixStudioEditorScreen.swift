@@ -10,6 +10,8 @@ struct MixStudioEditorScreen: View {
     @State private var showAddTrack = false
     @State private var showFilePicker = false
     @State private var isPlaying = false
+    @State private var projectName: String = ""
+    @State private var inPlaylist: Bool = false
 
     var body: some View {
         ZStack {
@@ -17,9 +19,27 @@ struct MixStudioEditorScreen: View {
 
             VStack(spacing: 0) {
                 // Header
-                ScreenHeader(title: project.name.uppercased())
+                ScreenHeader(title: "MIX STUDIO")
                     .padding(.top, 8)
-                    .padding(.bottom, 12)
+
+                // Editable project name
+                TextField("e.g. Worship Set 1", text: $projectName)
+                    .font(.spaceGrotesk(.regular, size: 18))
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, 16)
+                    .frame(height: 48)
+                    .background(Color.padIdle)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .onChange(of: projectName) { _, newName in
+                        guard !newName.isEmpty else { return }
+                        Task { await appState.renameMixProject(id: project.id, name: newName) }
+                    }
 
                 // Transport bar
                 transportBar
@@ -76,9 +96,30 @@ struct MixStudioEditorScreen: View {
             .frame(maxWidth: 600)
             .padding(.horizontal, 20)
 
-            // FAB
+            // Playlist button + FAB
             VStack {
                 Spacer()
+
+                // Playlist toggle button
+                Button {
+                    inPlaylist.toggle()
+                    Task { await appState.toggleMixProjectInPlaylist(id: project.id) }
+                } label: {
+                    Text(inPlaylist ? "REMOVE FROM PLAYLIST" : "SEND TO PLAYLIST")
+                        .font(.spaceGrotesk(.bold, size: 13))
+                        .tracking(2)
+                        .foregroundColor(inPlaylist ? .labsPurple : .textPrimary)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(inPlaylist ? Color.labsPurple.opacity(0.15) : Color.labsPurple)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.labsPurple, lineWidth: inPlaylist ? 1 : 0)
+                        )
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+
                 HStack {
                     Spacer()
                     Button { showAddTrack = true } label: {
@@ -111,6 +152,8 @@ struct MixStudioEditorScreen: View {
         }
         .task {
             tracks = await appState.getTracksForProject(projectId: project.id)
+            projectName = project.name
+            inPlaylist = project.inPlaylist
         }
     }
 

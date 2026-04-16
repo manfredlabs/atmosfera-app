@@ -7,11 +7,15 @@ struct HomeScreen: View {
     @EnvironmentObject var appState: AppState
     @State private var padMode = "maj"
     @State private var bpm = 90
-    @State private var clickEnabled = false
     @State private var accents = [1,0,0,0]
     @State private var isPlaying = false
     @State private var showPackSheet = false
     @State private var showTapTempo = false
+
+    private var clickEnabled: Bool {
+        get { appState.clickEnabled }
+    }
+    private func setClickEnabled(_ v: Bool) { appState.clickEnabled = v }
 
     var body: some View {
         GeometryReader { geo in
@@ -50,7 +54,7 @@ struct HomeScreen: View {
                         if isPlaying { restartPad() }
                     } label: {
                         Text(mode.uppercased())
-                            .font(.spaceGrotesk(.bold, size: 13))
+                            .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 13))
                             .foregroundColor(isSelected ? .textPrimary : .textSecondary)
                             .frame(width: 48, height: 26)
                             .background(isSelected ? Color.padActive : Color.padIdle)
@@ -126,60 +130,72 @@ struct HomeScreen: View {
     // MARK: - Click row: CLICK ON/OFF + − BPM + 
 
     private var clickRow: some View {
-        ZStack {
-            HStack(spacing: 8) {
-                // CLICK ON/OFF
-                Button { toggleClick() } label: {
-                    Text(clickEnabled ? "CLICK ON" : "CLICK OFF")
-                        .font(.spaceGrotesk(.bold, size: 13))
+        GeometryReader { geo in
+            let colWidth = (geo.size.width - 16) / 3
+            ZStack {
+                HStack(spacing: 8) {
+                    // Col 1: CLICK ON/OFF
+                    Button { toggleClick() } label: {
+                        Text(clickEnabled ? "CLICK ON" : "CLICK OFF")
+                            .font(.spaceGrotesk(.bold, size: 13))
+                            .foregroundColor(clickEnabled ? .clickTeal : .textSecondary)
+                            .frame(width: colWidth, height: 36)
+                            .background(clickEnabled ? Color.clickTealDim : Color.padIdle)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(clickEnabled ? Color.clickTeal.opacity(0.4) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    // Col 2: − button aligned leading
+                    HStack {
+                        Button { if bpm > 30 { bpm -= 1; if clickEnabled { restartClick() } } } label: {
+                            Text("−")
+                                .font(.spaceGrotesk(.bold, size: 20))
+                                .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
+                                .frame(width: 48, height: 36)
+                                .background(Color.padIdle)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
+                        }
+                        Spacer()
+                    }
+                    .frame(width: colWidth)
+
+                    // Col 3: + button aligned trailing
+                    HStack {
+                        Spacer()
+                        Button { if bpm < 240 { bpm += 1; if clickEnabled { restartClick() } } } label: {
+                            Text("+")
+                                .font(.spaceGrotesk(.bold, size: 20))
+                                .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
+                                .frame(width: 48, height: 36)
+                                .background(Color.padIdle)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
+                        }
+                    }
+                    .frame(width: colWidth)
+                }
+
+                // BPM overlay centered over right 2/3 (cols 2-3)
+                HStack(alignment: .bottom, spacing: 3) {
+                    Text("\(bpm)")
+                        .font(.spaceGrotesk(.bold, size: 24))
                         .foregroundColor(clickEnabled ? .clickTeal : .textSecondary)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(clickEnabled ? Color.clickTealDim : Color.padIdle)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(clickEnabled ? Color.clickTeal.opacity(0.4) : Color.padBorder.opacity(0.3), lineWidth: 1)
-                        )
+                    Text("BPM")
+                        .font(.spaceGrotesk(.regular, size: 10))
+                        .foregroundColor(clickEnabled ? .clickTeal.opacity(0.5) : .textSecondary.opacity(0.4))
+                        .padding(.bottom, 3)
                 }
-
-                // − button
-                Button { if bpm > 30 { bpm -= 1; if clickEnabled { restartClick() } } } label: {
-                    Text("−")
-                        .font(.spaceGrotesk(.bold, size: 20))
-                        .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
-                        .frame(width: 48, height: 36)
-                        .background(Color.padIdle)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
-                }
-
-                Spacer()
-
-                // + button
-                Button { if bpm < 240 { bpm += 1; if clickEnabled { restartClick() } } } label: {
-                    Text("+")
-                        .font(.spaceGrotesk(.bold, size: 20))
-                        .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
-                        .frame(width: 48, height: 36)
-                        .background(Color.padIdle)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
-                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.leading, colWidth + 8)
+                .onLongPressGesture { showTapTempo = true }
+                .allowsHitTesting(true)
             }
-
-            // BPM overlay centered over right 2/3
-            HStack(alignment: .bottom, spacing: 3) {
-                Text("\(bpm)")
-                    .font(.spaceGrotesk(.bold, size: 24))
-                    .foregroundColor(clickEnabled ? .clickTeal : .textSecondary)
-                Text("BPM")
-                    .font(.spaceGrotesk(.regular, size: 10))
-                    .foregroundColor(clickEnabled ? .clickTeal.opacity(0.5) : .textSecondary.opacity(0.4))
-                    .padding(.bottom, 3)
-            }
-            .onLongPressGesture { showTapTempo = true }
-            .allowsHitTesting(true)
         }
+        .frame(height: 36)
     }
 
     // MARK: - Accent circles
@@ -339,7 +355,7 @@ struct HomeScreen: View {
     }
 
     private func toggleClick() {
-        clickEnabled.toggle()
+        setClickEnabled(!clickEnabled)
         if clickEnabled { startClick() } else { stopClick() }
     }
 

@@ -82,24 +82,28 @@ struct PillSelector: View {
     @Binding var selected: String
     var activeColor: Color = .ledAmber
     var inactiveColor: Color = .padIdle
+    var activeTextColor: Color = .ledAmber
+    var inactiveTextColor: Color = .textSecondary
+    var fontSize: CGFloat = 14
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
+                let isSelected = selected == option
                 Button {
                     selected = option
                 } label: {
                     Text(option)
-                        .font(.spaceGrotesk(.bold, size: 13))
-                        .foregroundColor(selected == option ? .textPrimary : .textOnPad)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(selected == option ? activeColor : inactiveColor)
+                        .font(.spaceGrotesk(isSelected ? .bold : .regular, size: fontSize))
+                        .foregroundColor(isSelected ? activeTextColor : inactiveTextColor)
+                        .frame(maxWidth: .infinity, minHeight: 34)
+                        .background(isSelected ? activeColor.opacity(0.15) : inactiveColor)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
         }
         .padding(3)
+        .frame(height: 40)
         .background(Color.padIdle)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(
@@ -112,10 +116,11 @@ struct PillSelector: View {
 struct SectionHeader: View {
     let title: String
     var color: Color = .textSecondary
+    var size: CGFloat = 13
 
     var body: some View {
         Text(title)
-            .font(.spaceGrotesk(.bold, size: 13))
+            .font(.spaceGrotesk(.bold, size: size))
             .foregroundColor(color)
             .tracking(2)
     }
@@ -123,11 +128,12 @@ struct SectionHeader: View {
 
 struct ScreenHeader: View {
     let title: String
+    var color: Color = .textSecondary
 
     var body: some View {
         Text(title)
             .font(.spaceGrotesk(.light, size: 22))
-            .foregroundColor(.textPrimary)
+            .foregroundColor(color)
             .tracking(6)
     }
 }
@@ -146,7 +152,7 @@ struct AmberSlider: View {
 struct ChannelPills: View {
     @Binding var channel: String
     var activeColor: Color = .ledAmber
-    var dimColor: Color = .ledAmber
+    var isActive: Bool = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -168,9 +174,17 @@ struct ChannelPills: View {
                 } label: {
                     Text(val)
                         .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
-                        .foregroundColor(isSelected ? activeColor : .textSecondary)
+                        .foregroundColor(
+                            isSelected && isActive ? activeColor :
+                            isSelected ? .textPrimary :
+                            .textSecondary
+                        )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(isSelected ? activeColor.opacity(0.15) : Color.padIdle)
+                        .background(
+                            isSelected && isActive ? activeColor.opacity(0.15) :
+                            isSelected ? Color.padActive :
+                            Color.padIdle
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .padding(3)

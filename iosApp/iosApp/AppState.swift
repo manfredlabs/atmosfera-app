@@ -106,6 +106,7 @@ class AppState: ObservableObject {
     @Published var fadeInMs: Int64 = 2000
     @Published var fadeOutMs: Int64 = 1500
     @Published var timeSignature: String = "4/4"
+    @Published var clickEnabled: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
     private let defaults = UserDefaults.standard
@@ -265,6 +266,12 @@ class AppState: ObservableObject {
         await refreshPacks()
     }
 
+    func updateSoundPackDescription(id: Int64, description: String) async {
+        do { try await dbHelper.updateSoundPackDescription(id: id, description: description) }
+        catch { print("updateSoundPackDescription: \(error)") }
+        await refreshPacks()
+    }
+
     func setDefaultPack(id: Int64) async {
         do { try await dbHelper.setDefaultPack(id: id) }
         catch { print("setDefaultPack: \(error)") }
@@ -313,6 +320,11 @@ class AppState: ObservableObject {
         do { try await dbHelper.renameMixProject(id: id, name: name) }
         catch { print("renameMixProject: \(error)") }
         await refreshMixProjects()
+    }
+
+    func updateMixProjectSortOrder(id: Int64, sortOrder: Int32) async {
+        do { try await dbHelper.updateMixProjectSortOrder(id: id, sortOrder: sortOrder) }
+        catch { print("updateMixProjectSortOrder: \(error)") }
     }
 
     // MARK: - MixTrack CRUD

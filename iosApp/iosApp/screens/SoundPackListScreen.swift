@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SoundPackListScreen: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) var dismiss
     @State private var packs: [SoundPackItem] = []
     @State private var selectedPack: SoundPackItem? = nil
     @State private var showCreate = false
@@ -13,8 +14,23 @@ struct SoundPackListScreen: View {
             Color.darkBg.ignoresSafeArea()
 
                 VStack(spacing: 16) {
-                    ScreenHeader(title: "SOUND PACKS")
-                        .padding(.top, 8)
+                    // Header with back button
+                    ZStack {
+                        HStack {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            Spacer()
+                        }
+                        Text("SOUND PACKS")
+                            .font(.spaceGrotesk(.light, size: 22))
+                            .foregroundColor(.textPrimary)
+                            .tracking(2)
+                    }
+                    .padding(.top, 8)
 
                     if packs.isEmpty {
                         Spacer()
@@ -83,14 +99,15 @@ struct SoundPackListScreen: View {
     // MARK: - Pack Card
 
     private func packCard(_ pack: SoundPackItem) -> some View {
-        DarkSurface {
+        DarkSurface(borderColor: .padBorder.opacity(0.3)) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pack.name)
                         .font(.spaceGrotesk(.regular, size: 16))
                         .foregroundColor(.textPrimary)
-                    if pack.isDefault {
-                        Text("Built-in")
+                    let subtitle = pack.isDefault ? "Built-in" : pack.description
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
                             .font(.spaceGrotesk(.regular, size: 11))
                             .foregroundColor(.textSecondary.opacity(0.6))
                     }
@@ -144,7 +161,7 @@ struct SoundPackListScreen: View {
                     }
                 } label: {
                     Text("DELETE")
-                        .font(.spaceGrotesk(.bold, size: 13))
+                        .font(.spaceGrotesk(.regular, size: 13))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(Color(red: 1, green: 0.42, blue: 0.42))

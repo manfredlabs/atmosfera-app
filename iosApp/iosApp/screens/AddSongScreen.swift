@@ -35,12 +35,22 @@ struct AddSongScreen: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Header
-                    ScreenHeader(title: isEditMode ? "EDIT SONG" : "NEW SONG")
-                        .padding(.top, 8)
+                    HStack(spacing: 8) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .foregroundColor(.textSecondary)
+                        }
+                        Text(isEditMode ? "EDIT SONG" : "NEW SONG")
+                            .font(.spaceGrotesk(.light, size: 22))
+                            .foregroundColor(.textPrimary)
+                            .tracking(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 8)
 
                     // ─── Name ───
                     VStack(alignment: .leading, spacing: 8) {
-                        SectionHeader(title: "NAME")
+                        SectionHeader(title: "NAME", size: 12)
                         TextField("e.g. How Great Is Our God", text: $name)
                             .font(.spaceGrotesk(.regular, size: 18))
                             .foregroundColor(.textPrimary)
@@ -61,8 +71,8 @@ struct AddSongScreen: View {
 
                     // ─── Sound Pack ───
                     VStack(alignment: .leading, spacing: 8) {
-                        SectionHeader(title: "SOUND PACK")
-                        Button { showPackSheet = true } label: {
+                        SectionHeader(title: "SOUND PACK", size: 12)
+                        Button { showPackSheet = true }label: {
                             HStack {
                                 Text(appState.allPacks.first { $0.id == appState.currentPackId }?.name ?? "Atmos")
                                     .font(.spaceGrotesk(.regular, size: 15))
@@ -82,7 +92,7 @@ struct AddSongScreen: View {
 
                     // ─── Key ───
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "KEY")
+                        SectionHeader(title: "KEY", size: 12)
 
                         // NEU / MAJ / MIN pills
                         PillSelector(
@@ -109,7 +119,7 @@ struct AddSongScreen: View {
 
                     // ─── Click ───
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "CLICK")
+                        SectionHeader(title: "CLICK", size: 12)
 
                         if !clickEnabled {
                             // Full-width OFF
@@ -188,7 +198,7 @@ struct AddSongScreen: View {
             Array(signatures[$0..<min($0+4, signatures.count)])
         }
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "TIME SIGNATURE")
+            SectionHeader(title: "TIME SIGNATURE", size: 12)
             ForEach(rows.indices, id: \.self) { rowIdx in
                 HStack(spacing: 6) {
                     ForEach(rows[rowIdx], id: \.self) { sig in
@@ -219,7 +229,7 @@ struct AddSongScreen: View {
 
     private var packSheet: some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "SOUND PACK")
+            SectionHeader(title: "SOUND PACK", size: 12)
                 .padding(.bottom, 4)
             ForEach(appState.allPacks) { pack in
                 let isSelected = appState.currentPackId == pack.id
@@ -291,51 +301,67 @@ struct AddSongScreen: View {
     // MARK: - Click Row
 
     private var clickRow: some View {
-        ZStack {
-            HStack(spacing: 6) {
-                Button { clickEnabled = false } label: {
-                    Text("CLICK ON")
-                        .font(.spaceGrotesk(.bold, size: 13))
+        GeometryReader { geo in
+            let colWidth = (geo.size.width - 12) / 3
+            ZStack {
+                HStack(spacing: 6) {
+                    // Col 1: CLICK ON
+                    Button { clickEnabled = false } label: {
+                        Text("CLICK ON")
+                            .font(.spaceGrotesk(.bold, size: 13))
+                            .foregroundColor(.clickTeal)
+                            .frame(width: colWidth, height: 36)
+                            .background(Color.clickTeal.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clickTeal, lineWidth: 1))
+                    }
+
+                    // Col 2: − aligned leading
+                    HStack {
+                        Button { if bpm > 30 { bpm -= 1 } } label: {
+                            Text("−")
+                                .font(.spaceGrotesk(.bold, size: 20))
+                                .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
+                                .frame(width: 44, height: 36)
+                                .background(Color.padIdle)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
+                        }
+                        Spacer()
+                    }
+                    .frame(width: colWidth)
+
+                    // Col 3: + aligned trailing
+                    HStack {
+                        Spacer()
+                        Button { if bpm < 240 { bpm += 1 } } label: {
+                            Text("+")
+                                .font(.spaceGrotesk(.bold, size: 20))
+                                .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
+                                .frame(width: 44, height: 36)
+                                .background(Color.padIdle)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
+                        }
+                    }
+                    .frame(width: colWidth)
+                }
+
+                // BPM overlay centered over right 2/3
+                HStack(alignment: .bottom, spacing: 3) {
+                    Text("\(bpm)")
+                        .font(.spaceGrotesk(.bold, size: 24))
                         .foregroundColor(.clickTeal)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(Color.clickTeal.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clickTeal, lineWidth: 1))
+                    Text("BPM")
+                        .font(.spaceGrotesk(.regular, size: 10))
+                        .foregroundColor(.clickTeal.opacity(0.5))
+                        .padding(.bottom, 3)
                 }
-
-                Button { if bpm > 30 { bpm -= 1 } } label: {
-                    Text("−")
-                        .font(.spaceGrotesk(.bold, size: 20))
-                        .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
-                        .frame(width: 44, height: 36)
-                        .background(Color.padIdle)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
-                }
-
-                Spacer()
-
-                Button { if bpm < 240 { bpm += 1 } } label: {
-                    Text("+")
-                        .font(.spaceGrotesk(.bold, size: 20))
-                        .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
-                        .frame(width: 44, height: 36)
-                        .background(Color.padIdle)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
-                }
-            }
-
-            HStack(alignment: .bottom, spacing: 3) {
-                Text("\(bpm)")
-                    .font(.spaceGrotesk(.bold, size: 24))
-                    .foregroundColor(.clickTeal)
-                Text("BPM")
-                    .font(.spaceGrotesk(.regular, size: 10))
-                    .foregroundColor(.clickTeal.opacity(0.5))
-                    .padding(.bottom, 3)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.leading, colWidth + 6)
             }
         }
+        .frame(height: 36)
     }
 
     // MARK: - Accent Row

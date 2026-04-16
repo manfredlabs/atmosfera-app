@@ -34,7 +34,7 @@ struct SettingsScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "PAD", color: isPadActive ? .ledAmber : .textSecondary)
 
-            ChannelPills(channel: $appState.padChannel, activeColor: isPadActive ? .ledAmber : .textPrimary)
+            ChannelPills(channel: $appState.padChannel, activeColor: .ledAmber, isActive: isPadActive)
                 .onChange(of: appState.padChannel) { _, _ in appState.saveSettings() }
 
             settingsSlider(label: "Volume", value: $appState.padVolume, accent: isPadActive ? .ledAmber : .textSecondary)
@@ -60,13 +60,14 @@ struct SettingsScreen: View {
     // MARK: - CLICK Section
 
     private var clickSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "CLICK", color: .textSecondary)
+        let isClickActive = appState.clickEnabled
+        return VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "CLICK", color: isClickActive ? .clickTeal : .textSecondary)
 
-            ChannelPills(channel: $appState.clickChannel, activeColor: .clickTeal)
+            ChannelPills(channel: $appState.clickChannel, activeColor: .clickTeal, isActive: isClickActive)
                 .onChange(of: appState.clickChannel) { _, _ in appState.saveSettings() }
 
-            settingsSlider(label: "Volume", value: $appState.clickVolume, accent: .clickTeal)
+            settingsSlider(label: "Volume", value: $appState.clickVolume, accent: isClickActive ? .clickTeal : .textSecondary)
                 .onChange(of: appState.clickVolume) { _, _ in appState.saveSettings() }
 
             timeSignatureGrid
@@ -76,6 +77,7 @@ struct SettingsScreen: View {
     // MARK: - Time Signature
 
     private var timeSignatureGrid: some View {
+        let isClickActive = appState.clickEnabled
         let signatures = ["2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8"]
         let rows = stride(from: 0, to: signatures.count, by: 4).map {
             Array(signatures[$0..<min($0+4, signatures.count)])
@@ -94,13 +96,26 @@ struct SettingsScreen: View {
                         } label: {
                             Text(sig)
                                 .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
-                                .foregroundColor(isSelected ? .clickTeal : .textSecondary.opacity(0.7))
+                                .foregroundColor(
+                                    isSelected && isClickActive ? .clickTeal :
+                                    isSelected ? .textPrimary :
+                                    .textSecondary.opacity(0.7)
+                                )
                                 .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(isSelected ? Color.clickTeal.opacity(0.15) : Color.padIdle)
+                                .background(
+                                    isSelected && isClickActive ? Color.clickTeal.opacity(0.15) :
+                                    isSelected ? Color.padActive :
+                                    Color.padIdle
+                                )
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isSelected ? Color.clickTeal.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                                        .stroke(
+                                            isSelected && isClickActive ? Color.clickTeal.opacity(0.5) :
+                                            isSelected ? Color.padBorder.opacity(0.8) :
+                                            Color.padBorder.opacity(0.3),
+                                            lineWidth: 1
+                                        )
                                 )
                         }
                     }
@@ -145,6 +160,7 @@ struct SettingsScreen: View {
                 .frame(width: 60, alignment: .leading)
             Slider(value: value, in: 0...1)
                 .tint(accent)
+                .frame(height: 28)
         }
     }
 
@@ -163,6 +179,7 @@ struct SettingsScreen: View {
                 }
             ), in: 0...5000, step: 500)
             .tint(accent)
+            .frame(height: 28)
             Text(String(format: "%.1fs", Double(valueMs.wrappedValue) / 1000))
                 .font(.spaceGrotesk(.regular, size: 11))
                 .foregroundColor(.textSecondary.opacity(0.6))

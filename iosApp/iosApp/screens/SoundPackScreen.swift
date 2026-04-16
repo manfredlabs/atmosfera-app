@@ -7,14 +7,28 @@ private let allModes = ["neu","maj","min"]
 
 struct SoundPackScreen: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) var dismiss
     let pack: SoundPackItem
 
     @State private var pads: [SoundPadItem] = []
     @State private var padMode = "maj"
-    @State private var selectedNote = ""
-    @State private var selectedMode = ""
+    @State private var selectedNotes: Set<String> = []
+    @State private var noteFiles: [String: URL] = [:]
     @State private var showFilePicker = false
+    @State private var pendingFileNote = ""
     @State private var packName = ""
+    @State private var packDescription = ""
+    @State private var isProcessing = false
+    @FocusState private var nameFieldFocused: Bool
+    @FocusState private var descFieldFocused: Bool
+
+    private var allFilesSelected: Bool {
+        !selectedNotes.isEmpty && selectedNotes.allSatisfy { noteFiles[$0] != nil }
+    }
+
+    private var canSave: Bool {
+        !packName.isEmpty && (allFilesSelected || packName != pack.name || packDescription != pack.description) && !isProcessing
+    }
 
     var body: some View {
         ZStack {
@@ -22,12 +36,27 @@ struct SoundPackScreen: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    ScreenHeader(title: "SOUND PACK")
-                        .padding(.top, 8)
+                    // Header with back button
+                    ZStack {
+                        HStack {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            Spacer()
+                        }
+                        Text("SOUND PACK")
+                            .font(.spaceGrotesk(.light, size: 22))
+                            .foregroundColor(.textPrimary)
+                            .tracking(2)
+                    }
+                    .padding(.top, 8)
 
-                    // Editable name
+                    // NAME
                     VStack(alignment: .leading, spacing: 8) {
-                        SectionHeader(title: "NAME")
+                        SectionHeader(title: "NAME", size: 12)
                         TextField("e.g. Warm Pads", text: $packName)
                             .font(.spaceGrotesk(.regular, size: 18))
                             .foregroundColor(.textPrimary)
@@ -37,29 +66,139 @@ struct SoundPackScreen: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
+                                    .stroke(nameFieldFocused ? Color.ledAmber : Color.padBorder.opacity(0.5), lineWidth: 1)
                             )
+                            .focused($nameFieldFocused)
                             .autocorrectionDisabled()
                             .onChange(of: packName) { _, newName in
                                 if newName.count > 20 { packName = String(newName.prefix(20)) }
-                                guard !newName.isEmpty else { return }
-                                Task { await appState.renameSoundPack(id: pack.id, name: newName) }
                             }
                     }
 
-                    // Mode pill
+                    // DESCRIPTION
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionHeader(title: "DESCRIPTION", size: 12)
+                        TextField("", text: $packDescription, prompt: Text("e.g. Warm ambient pads").foregroundColor(.textSecondary.opacity(0.4)))
+                            .font(.spaceGrotesk(.regular, size: 16))
+                            .foregroundColor(.textPrimary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 48)
+                            .background(Color.padIdle)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(descFieldFocused ? Color.ledAmber : Color.padBorder.opacity(0.5), lineWidth: 1)
+                            )
+                            .focused($descFieldFocused)
+                            .autocorrectionDisabled()
+                    }
+
+                    // KEY
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "KEY")
+                        SectionHeader(title: "KEY", size: 12)
                         PillSelector(
                             options: ["NEU", "MAJ", "MIN"],
                             selected: Binding(
                                 get: { padMode.uppercased() },
-                                set: { padMode = $0.lowercased() }
+                                set: {
+                                    padMode = $0.lowercased()
+                                    selectedNotes = []
+                                    noteFiles = [:]
+                                }
                             )
                         )
 
                         // Note grid 4×3
                         noteGrid
+                    }
+
+                    // FILES (shown when notes selected)
+                    if !selectedNotes.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SectionHeader(title: "FILES", size: 12)
+                            let orderedNotes = allNotes.filter { selectedNotes.contains($0) }
+                            ForEach(orderedNotes, id: \.self) { note in
+                                let idx = allNotes.firstIndex(of: note)!
+                                let fileUrl = noteFiles[note]
+                                HStack(spacing: 10) {
+                                    Text(noteLabels[idx])
+                                        .font(.spaceGrotesk(.bold, size: 15))
+                                        .foregroundColor(.ledAmber)
+                                        .frame(width: 36)
+
+                                    Button {
+                                        pendingFileNote = note
+                                        showFilePicker = true
+                                    } label: {
+                                        HStack {
+                                            Text(fileUrl?.lastPathComponent ?? "Select file...")
+                                                .font(.spaceGrotesk(.regular, size: 13))
+                                                .foregroundColor(fileUrl != nil ? .textPrimary : .textSecondary.opacity(0.4))
+                                                .lineLimit(1)
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .frame(maxWidth: .infinity, minHeight: 44)
+                                        .background(Color.padIdle)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(fileUrl != nil ? Color.padActive.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                                        )
+                                    }
+
+                                    Button {
+                                        noteFiles.removeValue(forKey: note)
+                                        selectedNotes.remove(note)
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.textSecondary.opacity(0.5))
+                                            .frame(width: 32, height: 32)
+                                    }
+                                }
+                                .frame(height: 44)
+                            }
+                        }
+                    }
+
+                    Spacer().frame(height: 8)
+
+                    // Processing indicator
+                    if isProcessing {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .padActive))
+                                .scaleEffect(0.8)
+                            Text("Importing...")
+                                .font(.spaceGrotesk(.regular, size: 13))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+
+                    // CANCEL / SAVE buttons
+                    HStack(spacing: 12) {
+                        Button { dismiss() } label: {
+                            Text("CANCEL")
+                                .font(.spaceGrotesk(.bold, size: 14))
+                                .tracking(2)
+                                .foregroundColor(.textSecondary)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+                        Button { savePack() } label: {
+                            Text("SAVE")
+                                .font(.spaceGrotesk(.bold, size: 14))
+                                .tracking(2)
+                                .foregroundColor(canSave ? .darkBg : .textSecondary)
+                                .frame(maxWidth: .infinity, minHeight: 50)
+                                .background(canSave ? Color.ledAmber : Color.padActive)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .disabled(!canSave)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -71,13 +210,14 @@ struct SoundPackScreen: View {
         .fileImporter(isPresented: $showFilePicker,
                       allowedContentTypes: [.audio]) { result in
             if case .success(let url) = result {
-                assignPad(note: selectedNote, mode: selectedMode, url: url)
+                noteFiles[pendingFileNote] = url
             }
         }
         .task {
             await appState.refreshPads(packId: pack.id)
             pads = appState.currentPads
             packName = pack.name
+            packDescription = pack.description
         }
         .onChange(of: appState.currentPads) { _, new in pads = new }
     }
@@ -92,31 +232,77 @@ struct SoundPackScreen: View {
             ForEach(chunked.indices, id: \.self) { rowIdx in
                 HStack(spacing: 6) {
                     ForEach(chunked[rowIdx], id: \.offset) { idx, note in
+                        let isSelected = selectedNotes.contains(note)
                         let hasPad = pads.contains { $0.note == note && $0.mode == padMode }
-                        Button {
-                            selectedNote = note
-                            selectedMode = padMode
-                            showFilePicker = true
-                        } label: {
-                            VStack(spacing: 2) {
-                                Text(noteLabels[idx])
-                                    .font(.spaceGrotesk(hasPad ? .bold : .regular, size: 15))
-                                    .foregroundColor(hasPad ? .ledAmber : .textSecondary)
-                                Image(systemName: hasPad ? "checkmark.circle.fill" : "plus.circle")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(hasPad ? .ledAmber.opacity(0.6) : .textSecondary.opacity(0.3))
-                            }
+                        Text(noteLabels[idx])
+                            .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 15))
+                            .foregroundColor(
+                                isSelected ? .ledAmber :
+                                hasPad ? .padActive :
+                                .textSecondary
+                            )
                             .frame(maxWidth: .infinity, minHeight: 54)
-                            .background(hasPad ? Color.ledAmber.opacity(0.15) : Color.padIdle)
+                            .background(
+                                isSelected ? Color.ledAmber.opacity(0.15) :
+                                hasPad ? Color.padActive.opacity(0.15) :
+                                Color.padIdle
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(hasPad ? Color.ledAmber.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
+                                    .stroke(
+                                        isSelected ? Color.ledAmber :
+                                        hasPad ? Color.padActive.opacity(0.5) :
+                                        Color.padBorder.opacity(0.3),
+                                        lineWidth: 1
+                                    )
                             )
-                        }
+                            .opacity(hasPad && !isSelected ? 0.4 : 1.0)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if !hasPad {
+                                    if isSelected {
+                                        noteFiles.removeValue(forKey: note)
+                                        selectedNotes.remove(note)
+                                    } else {
+                                        selectedNotes.insert(note)
+                                    }
+                                }
+                            }
+                            .onLongPressGesture {
+                                if hasPad {
+                                    selectedNotes.insert(note)
+                                }
+                            }
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Save
+
+    private func savePack() {
+        guard canSave else { return }
+        isProcessing = true
+        Task {
+            // Update name/description
+            if packName != pack.name {
+                await appState.renameSoundPack(id: pack.id, name: packName)
+            }
+            if packDescription != pack.description {
+                await appState.updateSoundPackDescription(id: pack.id, description: packDescription)
+            }
+            // Assign files
+            if allFilesSelected {
+                for (note, url) in noteFiles {
+                    assignPad(note: note, mode: padMode, url: url)
+                }
+            }
+            isProcessing = false
+            selectedNotes = []
+            noteFiles = [:]
+            dismiss()
         }
     }
 

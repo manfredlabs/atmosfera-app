@@ -80,6 +80,11 @@ class IosDbHelper(private val db: AtmosDb) {
         db.soundPackDao.update(pack.copy(name = name))
     }
 
+    suspend fun updateSoundPackDescription(id: Long, description: String) {
+        val pack = db.soundPackDao.getById(id) ?: return
+        db.soundPackDao.update(pack.copy(description = description))
+    }
+
     suspend fun setDefaultPack(id: Long) {
         getAllPacks().forEach { pack ->
             db.soundPackDao.update(pack.copy(isDefault = pack.id == id))
@@ -122,6 +127,11 @@ class IosDbHelper(private val db: AtmosDb) {
     suspend fun renameMixProject(id: Long, name: String) {
         val project = db.mixProjectDao.getById(id) ?: return
         db.mixProjectDao.update(project.copy(name = name))
+    }
+
+    suspend fun updateMixProjectSortOrder(id: Long, sortOrder: Int) {
+        val project = db.mixProjectDao.getById(id) ?: return
+        db.mixProjectDao.update(project.copy(sortOrder = sortOrder))
     }
 
     // ── MixTrack CRUD ──────────────────────────────────────────────────────────

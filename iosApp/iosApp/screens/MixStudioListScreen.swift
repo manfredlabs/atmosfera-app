@@ -4,82 +4,74 @@ struct MixStudioListScreen: View {
     @EnvironmentObject var appState: AppState
     @State private var projects: [MixProjectItem] = []
     @State private var selectedProject: MixProjectItem? = nil
-    @State private var showCreate = false
-    @State private var newProjectName = ""
     @State private var projectToDelete: MixProjectItem? = nil
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Color.darkBg.ignoresSafeArea()
+        ZStack(alignment: .bottomTrailing) {
+            Color.darkBg.ignoresSafeArea()
 
-                VStack(spacing: 16) {
-                    ScreenHeader(title: "MIX STUDIO")
-                        .padding(.top, 8)
+            VStack(spacing: 16) {
+                ScreenHeader(title: "MIX STUDIO")
+                    .padding(.top, 8)
 
-                    if projects.isEmpty {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 48))
-                                .foregroundColor(.textSecondary.opacity(0.3))
-                            Text("No projects yet")
-                                .font(.spaceGrotesk(.regular, size: 16))
-                                .foregroundColor(.textSecondary.opacity(0.5))
-                            Text("Tap + to create your first mix")
-                                .font(.spaceGrotesk(.regular, size: 13))
-                                .foregroundColor(.textSecondary.opacity(0.3))
-                        }
-                        Spacer()
-                    } else {
-                        ScrollView {
-                            VStack(spacing: 10) {
-                                ForEach(projects) { project in
-                                    projectCard(project)
-                                }
+                if projects.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 48))
+                            .foregroundColor(.textSecondary.opacity(0.3))
+                        Text("No projects yet")
+                            .font(.spaceGrotesk(.regular, size: 16))
+                            .foregroundColor(.textSecondary.opacity(0.5))
+                        Text("Tap + to create your first mix")
+                            .font(.spaceGrotesk(.regular, size: 13))
+                            .foregroundColor(.textSecondary.opacity(0.3))
+                    }
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            ForEach(projects) { project in
+                                projectCard(project)
                             }
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .frame(maxWidth: 600)
-                .frame(maxWidth: .infinity)
-
-                // FAB
-                Button { showCreate = true } label: {
-                    Image(systemName: "plus")
-                        .font(.title2)
-                        .foregroundColor(.textPrimary)
-                        .frame(width: 56, height: 56)
-                        .background(Color.labsPurple)
-                        .clipShape(Circle())
-                }
-                .padding(24)
             }
-            .navigationBarHidden(true)
-            .alert("New Mix", isPresented: $showCreate) {
-                TextField("Name", text: $newProjectName)
-                Button("Create") {
-                    guard !newProjectName.isEmpty else { return }
-                    let name = newProjectName
-                    newProjectName = ""
-                    Task {
-                        await appState.createMixProject(name: name)
-                        projects = appState.allMixProjects
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
+
+            // FAB
+            Button {
+                Task {
+                    await appState.createMixProject(name: "New Mix")
+                    projects = appState.allMixProjects
+                    if let newProject = projects.last {
+                        selectedProject = newProject
                     }
                 }
-                Button("Cancel", role: .cancel) { newProjectName = "" }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.title2)
+                    .foregroundColor(.textPrimary)
+                    .frame(width: 56, height: 56)
+                    .background(Color.labsPurple)
+                    .clipShape(Circle())
             }
-            .sheet(item: $projectToDelete) { project in
-                deleteSheet(project)
-            }
-            .navigationDestination(item: $selectedProject) { project in
-                MixStudioEditorScreen(project: project)
-            }
-            .task { await appState.refreshMixProjects(); projects = appState.allMixProjects }
-            .onChange(of: appState.allMixProjects) { _, new in projects = new }
+            .padding(24)
         }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
+        .sheet(item: $projectToDelete){ project in
+            deleteSheet(project)
+        }
+        .navigationDestination(item: $selectedProject) { project in
+            MixStudioEditorScreen(project: project)
+        }
+        .task { await appState.refreshMixProjects(); projects = appState.allMixProjects }
+        .onChange(of: appState.allMixProjects) { _, new in projects = new }
     }
 
     // MARK: - Project Card

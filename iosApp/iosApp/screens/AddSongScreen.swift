@@ -24,9 +24,20 @@ struct AddSongScreen: View {
     @State private var clickChannel = "mono"
     @State private var timeSignature = "4/4"
     @State private var showPackSheet = false
+    @State private var selectedPackId: Int64 = -1
+    @State private var packPads: [SoundPadItem] = []
     @FocusState private var nameFieldFocused: Bool
 
     private var isEditMode: Bool { existingSong != nil }
+    private var isDefaultPack: Bool { appState.allPacks.first { $0.id == selectedPackId }?.isDefault ?? true }
+    private var availableModes: [String] {
+        if isDefaultPack { return ["neu", "maj", "min"] }
+        return Array(Set(packPads.map(\.mode)))
+    }
+    private func availableNotes(for mode: String) -> Set<String> {
+        if isDefaultPack { return Set(allNotes) }
+        return Set(packPads.filter { $0.mode == mode }.map(\.note))
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -74,7 +85,7 @@ struct AddSongScreen: View {
                         SectionHeader(title: "SOUND PACK", size: 12)
                         Button { showPackSheet = true }label: {
                             HStack {
-                                Text(appState.allPacks.first { $0.id == appState.currentPackId }?.name ?? "Atmos")
+                                Text(appState.allPacks.first { $0.id == selectedPackId }?.name ?? "Atmos")
                                     .font(.spaceGrotesk(.regular, size: 15))
                                     .foregroundColor(.textPrimary)
                                 Spacer()
@@ -94,13 +105,17 @@ struct AddSongScreen: View {
                     VStack(alignment: .leading, spacing: 10) {
                         SectionHeader(title: "KEY", size: 12)
 
-                        // NEU / MAJ / MIN pills
+                        // NEU / MAJ / MIN pills with availability
                         PillSelector(
                             options: ["NEU", "MAJ", "MIN"],
                             selected: Binding(
                                 get: { padMode.uppercased() },
-                                set: { padMode = $0.lowercased() }
-                            )
+                                set: { val in
+                                    let mode = val.lowercased()
+                                    if availableModes.contains(mode) { padMode = mode }
+                                }
+                            ),
+                            disabledOptions: Set(["neu", "maj", "min"].filter { !availableModes.contains($0) }.map { $0.uppercased() })
                         )
 
                         // Note grid 4×3
@@ -186,8 +201,17 @@ struct AddSongScreen: View {
                 .frame(maxWidth: 600)
             }
         }
-        .onAppear { populateFromExisting() }
-        .sheet(isPresented: $showPackSheet) { packSheet }
+        .onAppear {
+            populateFromExisting()
+            if !isEditMode {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    nameFieldFocused = true
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
+        .sheet(isPresented: $showPackSheet){ packSheet }
     }
 
     // MARK: - Time Signature Grid
@@ -232,11 +256,10 @@ struct AddSongScreen: View {
             SectionHeader(title: "SOUND PACK", size: 12)
                 .padding(.bottom, 4)
             ForEach(appState.allPacks) { pack in
-                let isSelected = appState.currentPackId == pack.id
+                let isSelected = selectedPackId == pack.id
                 Button {
-                    appState.currentPackId = pack.id
-                    appState.saveSettings()
-                    Task { await appState.refreshPads(packId: pack.id) }
+                    selectedPackId = pack.id
+                    Task { await loadPackPads(packId: pack.id) }
                     showPackSheet = false
                 } label: {
                     HStack {
@@ -265,7 +288,7 @@ struct AddSongScreen: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.darkBg)
-        .presentationDetents([.medium])
+        .presentationDetents([.height(CGFloat(appState.allPacks.count) * 54 + 60)])
         .presentationDragIndicator(.visible)
     }
 
@@ -275,12 +298,14 @@ struct AddSongScreen: View {
         let chunked = stride(from: 0, to: allNotes.count, by: 3).map {
             Array(Array(allNotes.enumerated())[$0..<min($0+3, allNotes.count)])
         }
+        let notesForMode = availableNotes(for: padMode)
         return VStack(spacing: 6) {
             ForEach(chunked.indices, id: \.self) { rowIdx in
                 HStack(spacing: 6) {
                     ForEach(chunked[rowIdx], id: \.offset) { idx, note in
                         let isSelected = selectedNote == note
-                        Button { selectedNote = note } label: {
+                        let isAvailable = notesForMode.contains(note)
+                        Button { if isAvailable { selectedNote = note } } label: {
                             Text(noteLabels[idx])
                                 .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 15))
                                 .foregroundColor(isSelected ? .ledAmber : .textSecondary)
@@ -291,6 +316,7 @@ struct AddSongScreen: View {
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(isSelected ? Color.ledAmber : Color.padBorder.opacity(0.3), lineWidth: 1)
                                 )
+                                .opacity(isAvailable ? 1.0 : 0.3)
                         }
                     }
                 }
@@ -409,7 +435,7 @@ struct AddSongScreen: View {
                             .fill(accentColor.opacity(0.15))
                             .frame(width: 36, height: 36)
                         Image(systemName: icon)
-                            .font(.system(size: 18))
+                            .font(.system(size: 20))
                             .foregroundColor(accentColor)
                     }
                     Text(label)
@@ -419,7 +445,12 @@ struct AddSongScreen: View {
                 }
 
                 HStack {
-                    AmberSlider(value: volume, accentColor: accentColor)
+                    StyledSlider(
+                        value: Binding(get: { Float(volume.wrappedValue) }, set: { volume.wrappedValue = Double($0) }),
+                        thumbColor: accentColor,
+                        activeTrackColor: accentDimColor,
+                        inactiveTrackColor: .padBorder.opacity(0.3)
+                    )
                     ChannelPills(channel: channel, activeColor: accentColor)
                 }
             }
@@ -437,6 +468,8 @@ struct AddSongScreen: View {
                 .compactMap { $0.name.hasPrefix("MySong#") ? Int($0.name.dropFirst(7)) : nil }
                 .max() ?? 0
             name = "MySong#\(maxNum + 1)"
+            selectedPackId = appState.currentPackId
+            Task { await loadPackPads(packId: selectedPackId) }
             return
         }
         name = s.name
@@ -450,8 +483,28 @@ struct AddSongScreen: View {
         clickVolume = Double(s.clickVolume)
         padChannel = s.padChannel
         clickChannel = s.clickChannel
+        selectedPackId = s.soundPackId == -1 ? appState.currentPackId : s.soundPackId
         let beats = accents.count
         timeSignature = [2: "2/4", 3: "3/4", 5: "5/4", 6: "6/4", 7: "7/4"][beats] ?? "4/4"
+        Task { await loadPackPads(packId: selectedPackId) }
+    }
+
+    private func loadPackPads(packId: Int64) async {
+        let pads = await appState.getPadsForPack(packId: packId)
+        await MainActor.run {
+            packPads = pads
+            let defaultPack = appState.allPacks.first { $0.id == selectedPackId }?.isDefault ?? true
+            if !defaultPack {
+                let modes = Array(Set(pads.map(\.mode)))
+                if !modes.contains(padMode) && !modes.isEmpty {
+                    padMode = modes.first!
+                }
+                let notes = Set(pads.filter { $0.mode == padMode }.map(\.note))
+                if !notes.contains(selectedNote) && !notes.isEmpty {
+                    selectedNote = notes.first!
+                }
+            }
+        }
     }
 
     private func save() {
@@ -467,7 +520,7 @@ struct AddSongScreen: View {
             createdAt: existingSong?.createdAt ?? Int64(Date().timeIntervalSince1970 * 1000),
             sortOrder: existingSong?.sortOrder ?? 0,
             padMode: padMode,
-            soundPackId: existingSong?.soundPackId ?? -1,
+            soundPackId: selectedPackId,
             padVolume: Float(padVolume),
             padChannel: padChannel,
             clickVolume: Float(clickVolume),

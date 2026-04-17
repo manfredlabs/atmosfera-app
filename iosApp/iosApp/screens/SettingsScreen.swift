@@ -35,21 +35,38 @@ struct SettingsScreen: View {
             SectionHeader(title: "PAD", color: isPadActive ? .ledAmber : .textSecondary)
 
             ChannelPills(channel: $appState.padChannel, activeColor: .ledAmber, isActive: isPadActive)
-                .onChange(of: appState.padChannel) { _, _ in appState.saveSettings() }
+                .onChange(of: appState.padChannel) { _, ch in
+                    let linked: String
+                    switch ch {
+                    case "left": linked = "right"
+                    case "right": linked = "left"
+                    default: linked = "mono"
+                    }
+                    appState.clickChannel = linked
+                    appState.liveAudio.updatePadPanning(channel: ch)
+                    appState.liveAudio.currentClickChannel = linked
+                    appState.saveSettings()
+                }
 
-            settingsSlider(label: "Volume", value: $appState.padVolume, accent: isPadActive ? .ledAmber : .textSecondary)
+            settingsSlider(label: "Volume", value: $appState.padVolume,
+                          accent: isPadActive ? .ledAmber : .textSecondary,
+                          dimAccent: isPadActive ? .ledAmberDim : .padActive)
                 .onChange(of: appState.padVolume) { _, v in
                     appState.liveAudio.padTargetVolume = v
                     appState.saveSettings()
                 }
 
-            fadeSlider(label: "Fade In", valueMs: $appState.fadeInMs, accent: isPadActive ? .ledAmber : .textSecondary) { ms in
+            fadeSlider(label: "Fade In", valueMs: $appState.fadeInMs,
+                      accent: isPadActive ? .ledAmber : .textSecondary,
+                      dimAccent: isPadActive ? .ledAmberDim : .padActive) { ms in
                 appState.liveAudio.fadeInMs = ms
                 appState.mixAudio.fadeInMs = ms
                 appState.saveSettings()
             }
 
-            fadeSlider(label: "Fade Out", valueMs: $appState.fadeOutMs, accent: isPadActive ? .ledAmber : .textSecondary) { ms in
+            fadeSlider(label: "Fade Out", valueMs: $appState.fadeOutMs,
+                      accent: isPadActive ? .ledAmber : .textSecondary,
+                      dimAccent: isPadActive ? .ledAmberDim : .padActive) { ms in
                 appState.liveAudio.fadeOutMs = ms
                 appState.mixAudio.fadeOutMs = ms
                 appState.saveSettings()
@@ -65,9 +82,22 @@ struct SettingsScreen: View {
             SectionHeader(title: "CLICK", color: isClickActive ? .clickTeal : .textSecondary)
 
             ChannelPills(channel: $appState.clickChannel, activeColor: .clickTeal, isActive: isClickActive)
-                .onChange(of: appState.clickChannel) { _, _ in appState.saveSettings() }
+                .onChange(of: appState.clickChannel) { _, ch in
+                    let linked: String
+                    switch ch {
+                    case "left": linked = "right"
+                    case "right": linked = "left"
+                    default: linked = "mono"
+                    }
+                    appState.padChannel = linked
+                    appState.liveAudio.currentClickChannel = ch
+                    appState.liveAudio.updatePadPanning(channel: linked)
+                    appState.saveSettings()
+                }
 
-            settingsSlider(label: "Volume", value: $appState.clickVolume, accent: isClickActive ? .clickTeal : .textSecondary)
+            settingsSlider(label: "Volume", value: $appState.clickVolume,
+                          accent: isClickActive ? .clickTeal : .textSecondary,
+                          dimAccent: isClickActive ? .clickTealDim : .padActive)
                 .onChange(of: appState.clickVolume) { _, _ in appState.saveSettings() }
 
             timeSignatureGrid
@@ -152,34 +182,40 @@ struct SettingsScreen: View {
 
     // MARK: - Helpers
 
-    private func settingsSlider(label: String, value: Binding<Float>, accent: Color) -> some View {
+    private func settingsSlider(label: String, value: Binding<Float>, accent: Color, dimAccent: Color) -> some View {
         HStack {
             Text(label)
                 .font(.spaceGrotesk(.regular, size: 13))
                 .foregroundColor(.textSecondary)
                 .frame(width: 60, alignment: .leading)
-            Slider(value: value, in: 0...1)
-                .tint(accent)
-                .frame(height: 28)
+            StyledSlider(
+                value: value,
+                thumbColor: accent,
+                activeTrackColor: dimAccent,
+                inactiveTrackColor: .padBorder.opacity(0.3)
+            )
         }
     }
 
-    private func fadeSlider(label: String, valueMs: Binding<Int64>, accent: Color, onChange: @escaping (Int64) -> Void) -> some View {
+    private func fadeSlider(label: String, valueMs: Binding<Int64>, accent: Color, dimAccent: Color, onChange: @escaping (Int64) -> Void) -> some View {
         HStack {
             Text(label)
                 .font(.spaceGrotesk(.regular, size: 13))
                 .foregroundColor(.textSecondary)
                 .frame(width: 60, alignment: .leading)
-            Slider(value: Binding(
-                get: { Double(valueMs.wrappedValue) },
-                set: {
-                    let rounded = Int64(($0 / 500).rounded() * 500)
-                    valueMs.wrappedValue = rounded
-                    onChange(rounded)
-                }
-            ), in: 0...5000, step: 500)
-            .tint(accent)
-            .frame(height: 28)
+            StyledSlider(
+                value: Binding(
+                    get: { Float(valueMs.wrappedValue) / 5000.0 },
+                    set: {
+                        let ms = Int64(($0 * 5000 / 500).rounded() * 500)
+                        valueMs.wrappedValue = ms
+                        onChange(ms)
+                    }
+                ),
+                thumbColor: accent,
+                activeTrackColor: dimAccent,
+                inactiveTrackColor: .padBorder.opacity(0.3)
+            )
             Text(String(format: "%.1fs", Double(valueMs.wrappedValue) / 1000))
                 .font(.spaceGrotesk(.regular, size: 11))
                 .foregroundColor(.textSecondary.opacity(0.6))

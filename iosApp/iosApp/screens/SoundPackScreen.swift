@@ -152,7 +152,7 @@ struct SoundPackScreen: View {
                                         selectedNotes.remove(note)
                                     } label: {
                                         Image(systemName: "xmark")
-                                            .font(.system(size: 12))
+                                            .font(.system(size: 16))
                                             .foregroundColor(.textSecondary.opacity(0.5))
                                             .frame(width: 32, height: 32)
                                     }
@@ -207,6 +207,7 @@ struct SoundPackScreen: View {
             }
         }
         .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .fileImporter(isPresented: $showFilePicker,
                       allowedContentTypes: [.audio]) { result in
             if case .success(let url) = result {

@@ -135,7 +135,8 @@ struct MixStudioEditorScreen: View {
             }
         }
         .navigationBarHidden(true)
-        .confirmationDialog("Add Track", isPresented: $showAddTrack) {
+        .toolbar(.hidden, for: .tabBar)
+        .confirmationDialog("Add Track",isPresented: $showAddTrack) {
             Button("Pad Track") { addPadTrack() }
             Button("Click Track") { addClickTrack() }
             Button("Audio File") { showFilePicker = true }

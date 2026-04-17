@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedTab = 1
     @State private var loadError: String? = nil
 
     init() {
@@ -33,7 +32,7 @@ struct ContentView: View {
         ZStack {
             Color.darkBg.ignoresSafeArea()
 
-            TabView(selection: $selectedTab) {
+            TabView(selection: $appState.selectedTab) {
                 NavigationStack {
                     SettingsScreen()
                 }
@@ -48,7 +47,9 @@ struct ContentView: View {
                     }
                     .tag(1)
 
-                PlaylistScreen()
+                NavigationStack {
+                    PlaylistScreen()
+                }
                     .tabItem {
                         Label("Playlist", systemImage: "list.bullet.rectangle")
                     }

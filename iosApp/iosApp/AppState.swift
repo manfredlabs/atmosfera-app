@@ -107,6 +107,9 @@ class AppState: ObservableObject {
     @Published var fadeOutMs: Int64 = 1500
     @Published var timeSignature: String = "4/4"
     @Published var clickEnabled: Bool = false
+    @Published var selectedTab: Int = 1
+    @Published var liveBpm: Int = 90
+    @Published var tapTempoLongPress: Bool = true
 
     private var cancellables = Set<AnyCancellable>()
     private let defaults = UserDefaults.standard
@@ -166,6 +169,16 @@ class AppState: ObservableObject {
             currentPads = (raw as NSArray).compactMap { padFromKotlin($0) }
         } catch {
             print("refreshPads: \(error)")
+        }
+    }
+
+    func getPadsForPack(packId: Int64) async -> [SoundPadItem] {
+        do {
+            let raw = try await dbHelper.getPadsForPack(packId: packId)
+            return (raw as NSArray).compactMap { padFromKotlin($0) }
+        } catch {
+            print("getPadsForPack: \(error)")
+            return []
         }
     }
 
@@ -387,6 +400,8 @@ class AppState: ObservableObject {
         fadeOutMs = Int64(defaults.integer(forKey: "fadeOutMs")).nonZeroOr(1500)
         currentPackId = Int64(defaults.integer(forKey: "currentPackId").nonZeroOr(-1))
         timeSignature = defaults.string(forKey: "timeSignature") ?? "4/4"
+        liveBpm = defaults.integer(forKey: "liveBpm").nonZeroOr(90)
+        tapTempoLongPress = defaults.object(forKey: "tapTempoLongPress") == nil ? true : defaults.bool(forKey: "tapTempoLongPress")
     }
 
     // MARK: - Default pack bootstrap

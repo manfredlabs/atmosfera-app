@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 private let allNotes = ["c","cs","d","ds","e","f","fs","g","gs","a","as","b"]
 private let noteLabels = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
@@ -11,6 +12,9 @@ struct HomeScreen: View {
     @State private var isPlaying = false
     @State private var showPackSheet = false
     @State private var showTapTempo = false
+    @State private var liveBeatOn = false
+    @State private var liveCurrentBeat = 0
+    private let beatTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     private var clickEnabled: Bool {
         get { appState.clickEnabled }
@@ -39,6 +43,19 @@ struct HomeScreen: View {
         .background(Color.darkBg)
         .sheet(isPresented: $showPackSheet) { packSheet }
         .sheet(isPresented: $showTapTempo) { tapTempoSheet }
+        .onReceive(beatTimer) { _ in
+            let on = appState.liveAudio.beatOn
+            let beat = appState.liveAudio.currentBeat
+            if on != liveBeatOn || beat != liveCurrentBeat {
+                liveBeatOn = on
+                liveCurrentBeat = beat
+            }
+        }
+        .onAppear { bpm = appState.liveBpm }
+        .onChange(of: appState.liveBpm) { _, newBpm in
+            bpm = newBpm
+            if clickEnabled { restartClick() }
+        }
     }
 
     // MARK: - Top bar: NEU/MAJ/MIN + Pack chip
@@ -46,7 +63,7 @@ struct HomeScreen: View {
     private var topBar: some View {
         HStack {
             // Mode pills
-            HStack(spacing: 2) {
+            HStack(spacing: 0) {
                 ForEach(["neu", "maj", "min"], id: \.self) { mode in
                     let isSelected = padMode == mode
                     Button {
@@ -56,7 +73,7 @@ struct HomeScreen: View {
                         Text(mode.uppercased())
                             .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 13))
                             .foregroundColor(isSelected ? .textPrimary : .textSecondary)
-                            .frame(width: 48, height: 26)
+                            .frame(width: 48, height: 32)
                             .background(isSelected ? Color.padActive : Color.padIdle)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
@@ -205,7 +222,7 @@ struct HomeScreen: View {
             ForEach(Array(accents.enumerated()), id: \.offset) { index, beatState in
                 let isAccent = beatState == 1
                 let isMuted = beatState == 2
-                let isCurrent = clickEnabled && appState.liveAudio.beatOn && appState.liveAudio.currentBeat == index
+                let isCurrent = clickEnabled && liveBeatOn && liveCurrentBeat == index
 
                 Button {
                     accents[index] = (beatState + 1) % 3
@@ -298,7 +315,7 @@ struct HomeScreen: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.darkBg)
-        .presentationDetents([.medium])
+        .presentationDetents([.height(CGFloat(appState.allPacks.count) * 54 + 60)])
         .presentationDragIndicator(.visible)
     }
 

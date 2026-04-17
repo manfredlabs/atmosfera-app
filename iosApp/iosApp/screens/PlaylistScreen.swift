@@ -8,8 +8,8 @@ private let noteLabels: [String: String] = [
 
 struct PlaylistScreen: View {
     @EnvironmentObject var appState: AppState
-    @State private var showAddSong = false
-    @State private var editingSong: SongItem? = nil
+    @State private var navigateToAdd = false
+    @State private var navigateToEdit: SongItem? = nil
     @State private var isLocked = false
     @State private var expandedCardId: String? = nil
     @State private var items: [PlaylistItem] = []
@@ -32,7 +32,7 @@ struct PlaylistScreen: View {
 
             // FAB
             if !isLocked {
-                Button { showAddSong = true } label: {
+                Button { navigateToAdd = true } label: {
                     Image(systemName: "plus")
                         .font(.title2)
                         .foregroundColor(.textPrimary)
@@ -44,11 +44,12 @@ struct PlaylistScreen: View {
             }
         }
         .background(Color.darkBg)
-        .sheet(isPresented: $showAddSong) {
+        .navigationBarHidden(true)
+        .navigationDestination(isPresented: $navigateToAdd) {
             AddSongScreen(existingSong: nil)
                 .onDisappear { refreshItems() }
         }
-        .sheet(item: $editingSong) { song in
+        .navigationDestination(item: $navigateToEdit) { song in
             AddSongScreen(existingSong: song)
                 .onDisappear { refreshItems() }
         }
@@ -133,7 +134,7 @@ struct PlaylistScreen: View {
                 onHeaderClick: { handleHeaderClick(item) },
                 onPlay: { playSong(song) },
                 onStop: { stopSong() },
-                onEdit: { editingSong = song },
+                onEdit: { navigateToEdit = song },
                 onDelete: { deleteSong(song) }
             )
         case .mix(let project):
@@ -232,6 +233,12 @@ struct PlaylistScreen: View {
         if expandedCardId == item.id {
             expandedCardId = nil
         } else {
+            // Stop any playing song/mix before expanding another card
+            if appState.playingSongId != nil { stopSong() }
+            if appState.playingMixId != nil {
+                appState.mixAudio.stopAll()
+                appState.playingMixId = nil
+            }
             expandedCardId = item.id
         }
     }
@@ -562,6 +569,7 @@ private struct MixCardView: View {
                 }) {
                     HStack(spacing: 14) {
                         Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 26))
                             .foregroundColor(.labsPurple)
                             .frame(width: 52, height: 52)
                             .background(Color.labsPurple.opacity(0.15))
@@ -579,10 +587,7 @@ private struct MixCardView: View {
 
                         Spacer()
 
-                        if isPlaying || mixAudio.isPaused {
-                            Image(systemName: "waveform")
-                                .foregroundColor(.labsPurple)
-                        }
+                        
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 20)

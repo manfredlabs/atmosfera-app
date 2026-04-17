@@ -85,13 +85,15 @@ struct PillSelector: View {
     var activeTextColor: Color = .ledAmber
     var inactiveTextColor: Color = .textSecondary
     var fontSize: CGFloat = 14
+    var disabledOptions: Set<String> = []
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
                 let isSelected = selected == option
+                let isDisabled = disabledOptions.contains(option)
                 Button {
-                    selected = option
+                    if !isDisabled { selected = option }
                 } label: {
                     Text(option)
                         .font(.spaceGrotesk(isSelected ? .bold : .regular, size: fontSize))
@@ -99,6 +101,7 @@ struct PillSelector: View {
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .background(isSelected ? activeColor.opacity(0.15) : inactiveColor)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .opacity(isDisabled ? 0.3 : 1.0)
                 }
             }
         }
@@ -138,14 +141,49 @@ struct ScreenHeader: View {
     }
 }
 
-struct AmberSlider: View {
-    @Binding var value: Double
-    var range: ClosedRange<Double> = 0...1
-    var accentColor: Color = .ledAmber
+struct StyledSlider: View {
+    @Binding var value: Float
+    var range: ClosedRange<Float> = 0...1
+    var thumbColor: Color = .ledAmber
+    var activeTrackColor: Color = .ledAmberDim
+    var inactiveTrackColor: Color = .padBorder.opacity(0.3)
+    var height: CGFloat = 28
 
     var body: some View {
-        Slider(value: $value, in: range)
-            .tint(accentColor)
+        GeometryReader { geo in
+            let w = geo.size.width
+            let frac = CGFloat((value - range.lowerBound) / (range.upperBound - range.lowerBound))
+            let thumbSize: CGFloat = 20
+            let trackH: CGFloat = 4
+            let thumbX = frac * (w - thumbSize)
+
+            ZStack(alignment: .leading) {
+                // Inactive track
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(inactiveTrackColor)
+                    .frame(height: trackH)
+                // Active track
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(activeTrackColor)
+                    .frame(width: thumbX + thumbSize / 2, height: trackH)
+                // Thumb
+                Circle()
+                    .fill(thumbColor)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .shadow(color: thumbColor.opacity(0.3), radius: 4)
+                    .offset(x: thumbX)
+            }
+            .frame(height: height)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { drag in
+                        let pct = Float(max(0, min(1, drag.location.x / w)))
+                        value = range.lowerBound + pct * (range.upperBound - range.lowerBound)
+                    }
+            )
+        }
+        .frame(height: height)
     }
 }
 
@@ -155,7 +193,7 @@ struct ChannelPills: View {
     var isActive: Bool = true
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(["L", "M", "R"], id: \.self) { val in
                 let isSelected: Bool = {
                     switch channel.lowercased() {
@@ -173,29 +211,68 @@ struct ChannelPills: View {
                     }
                 } label: {
                     Text(val)
-                        .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
+                        .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 11))
                         .foregroundColor(
                             isSelected && isActive ? activeColor :
                             isSelected ? .textPrimary :
-                            .textSecondary
+                            .textSecondary.opacity(0.5)
                         )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(width: 28, height: 28)
                         .background(
-                            isSelected && isActive ? activeColor.opacity(0.15) :
+                            isSelected && isActive ? activeColor.opacity(0.2) :
                             isSelected ? Color.padActive :
-                            Color.padIdle
+                            Color.clear
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(
+                                    isSelected && isActive ? activeColor :
+                                    Color.padBorder.opacity(0.3),
+                                    lineWidth: 1
+                                )
+                        )
                 }
-                .padding(3)
+                .buttonStyle(.plain)
             }
         }
-        .frame(height: 40)
-        .background(Color.padIdle)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
-        )
+    }
+}
+
+// MARK: - SwipeRevealCard
+
+struct SwipeRevealCard<Background: View, Content: View>: View {
+    var revealWidth: CGFloat = 70
+    var enabled: Bool = true
+    @ViewBuilder var background: () -> Background
+    @ViewBuilder var content: () -> Content
+
+    @State private var offsetX: CGFloat = 0
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            if offsetX < -1 && enabled {
+                background()
+            }
+            content()
+                .offset(x: offsetX)
+                .gesture(
+                    enabled ?
+                    DragGesture(minimumDistance: 20)
+                        .onChanged { value in
+                            let w = value.translation.width
+                            guard abs(w) > abs(value.translation.height) else { return }
+                            withAnimation(.interactiveSpring()) {
+                                offsetX = min(0, w)
+                            }
+                        }
+                        .onEnded { value in
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                offsetX = value.translation.width < -revealWidth / 2 ? -revealWidth : 0
+                            }
+                        }
+                    : nil
+                )
+        }
     }
 }

@@ -2,7 +2,8 @@ import SwiftUI
 
 struct LabsScreen: View {
     @EnvironmentObject var appState: AppState
-    @State private var showMixStudio = false
+    @State private var navigateToTapTempo = false
+    @State private var navigateToMixStudio = false
 
     var body: some View {
         NavigationStack {
@@ -11,9 +12,7 @@ struct LabsScreen: View {
                     .padding(.top, 16)
 
                 // Tap Tempo card
-                NavigationLink {
-                    TapTempoScreen()
-                } label: {
+                Button { navigateToTapTempo = true } label: {
                     labCard(
                         icon: "hand.tap",
                         title: "Tap Tempo",
@@ -22,9 +21,7 @@ struct LabsScreen: View {
                 }
 
                 // Mix Studio card
-                NavigationLink {
-                    MixStudioListScreen()
-                } label: {
+                Button { navigateToMixStudio = true } label: {
                     labCard(
                         icon: "headphones",
                         title: "Mix Studio",
@@ -37,6 +34,13 @@ struct LabsScreen: View {
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .background(Color.darkBg)
+            .navigationBarHidden(true)
+            .navigationDestination(isPresented: $navigateToTapTempo) {
+                TapTempoScreen()
+            }
+            .navigationDestination(isPresented: $navigateToMixStudio) {
+                MixStudioListScreen()
+            }
         }
     }
 
@@ -48,7 +52,7 @@ struct LabsScreen: View {
                     .frame(width: 44, height: 44)
                 Image(systemName: icon)
                     .foregroundColor(.labsPurple)
-                    .font(.system(size: 20))
+                    .font(.system(size: 24))
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -64,7 +68,7 @@ struct LabsScreen: View {
 
             Image(systemName: "chevron.right")
                 .foregroundColor(.textSecondary.opacity(0.4))
-                .font(.system(size: 14))
+                .font(.system(size: 20))
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -89,6 +93,17 @@ struct TapTempoScreen: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Custom header matching Android
+            HStack {
+                Spacer()
+                Text("TAP TEMPO")
+                    .font(.spaceGrotesk(.bold, size: 22))
+                    .foregroundColor(.textSecondary)
+                    .tracking(6)
+                Spacer()
+            }
+            .frame(height: 48)
+
             Spacer().frame(height: 8)
 
             // BPM display
@@ -133,8 +148,7 @@ struct TapTempoScreen: View {
 
                 Button {
                     if tapBpm > 0 {
-                        // Apply BPM and go back
-                        dismiss()
+                        applyBpmAndGoLive()
                     }
                 } label: {
                     Text("Apply & Go Live")
@@ -160,7 +174,13 @@ struct TapTempoScreen: View {
                     .font(.spaceGrotesk(.regular, size: 14))
                     .foregroundColor(.textPrimary)
                 Spacer()
-                Toggle("", isOn: .constant(true))
+                Toggle("", isOn: Binding(
+                    get: { appState.tapTempoLongPress },
+                    set: { newValue in
+                        appState.tapTempoLongPress = newValue
+                        UserDefaults.standard.set(newValue, forKey: "tapTempoLongPress")
+                    }
+                ))
                     .toggleStyle(SwitchToggleStyle(tint: .clickTeal))
                     .labelsHidden()
             }
@@ -171,17 +191,10 @@ struct TapTempoScreen: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.darkBg)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("TAP TEMPO")
-                    .font(.spaceGrotesk(.bold, size: 22))
-                    .foregroundColor(.textSecondary)
-                    .tracking(6)
-            }
-        }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private func handleTap() {
@@ -196,6 +209,15 @@ struct TapTempoScreen: View {
             let intervals = zip(tapTimes, tapTimes.dropFirst()).map { $1.timeIntervalSince($0) }
             let avg = intervals.reduce(0, +) / Double(intervals.count)
             tapBpm = max(30, min(240, Int(60.0 / avg)))
+        }
+    }
+
+    private func applyBpmAndGoLive() {
+        appState.liveBpm = tapBpm
+        UserDefaults.standard.set(tapBpm, forKey: "liveBpm")
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            appState.selectedTab = 1
         }
     }
 }

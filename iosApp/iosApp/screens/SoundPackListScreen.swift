@@ -5,8 +5,7 @@ struct SoundPackListScreen: View {
     @Environment(\.dismiss) var dismiss
     @State private var packs: [SoundPackItem] = []
     @State private var selectedPack: SoundPackItem? = nil
-    @State private var showCreate = false
-    @State private var newPackName = ""
+    @State private var navigateToNew = false
     @State private var packToDelete: SoundPackItem? = nil
 
     var body: some View {
@@ -62,7 +61,15 @@ struct SoundPackListScreen: View {
                 .frame(maxWidth: .infinity)
 
                 // FAB
-                Button { showCreate = true } label: {
+                Button {
+                    Task {
+                        await appState.createSoundPack(name: "New Sound Pack")
+                        packs = appState.allPacks
+                        if let newPack = packs.last(where: { !$0.isDefault }) {
+                            selectedPack = newPack
+                        }
+                    }
+                } label: {
                     Image(systemName: "plus")
                         .font(.title2)
                         .foregroundColor(.textPrimary)
@@ -73,19 +80,6 @@ struct SoundPackListScreen: View {
                 .padding(24)
             }
         .navigationBarHidden(true)
-        .alert("New Sound Pack", isPresented: $showCreate) {
-            TextField("Name", text: $newPackName)
-            Button("Create") {
-                guard !newPackName.isEmpty else { return }
-                let name = newPackName
-                newPackName = ""
-                Task {
-                    await appState.createSoundPack(name: name)
-                    packs = appState.allPacks
-                }
-            }
-            Button("Cancel", role: .cancel) { newPackName = "" }
-        }
         .sheet(item: $packToDelete) { pack in
             deleteSheet(pack)
         }
@@ -99,36 +93,51 @@ struct SoundPackListScreen: View {
     // MARK: - Pack Card
 
     private func packCard(_ pack: SoundPackItem) -> some View {
-        DarkSurface(borderColor: .padBorder.opacity(0.3)) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(pack.name)
-                        .font(.spaceGrotesk(.regular, size: 16))
-                        .foregroundColor(.textPrimary)
-                    let subtitle = pack.isDefault ? "Built-in" : pack.description
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(.spaceGrotesk(.regular, size: 11))
-                            .foregroundColor(.textSecondary.opacity(0.6))
+        let revealWidth: CGFloat = 70
+        return SwipeRevealCard(
+            revealWidth: revealWidth,
+            enabled: !pack.isDefault,
+            background: {
+                HStack(spacing: 0) {
+                    Spacer()
+                    Button {
+                        packToDelete = pack
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color(red: 1, green: 0.42, blue: 0.42))
+                            .frame(minWidth: 70, maxWidth: 70, maxHeight: .infinity)
                     }
+                    .background(Color.padIdle)
                 }
-                Spacer()
+                .background(Color.darkBg)
+            },
+            content: {
+                DarkSurface(borderColor: .padBorder.opacity(0.3)) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(pack.name)
+                                .font(.spaceGrotesk(.regular, size: 16))
+                                .foregroundColor(.textPrimary)
+                            let subtitle = pack.isDefault ? "Built-in" : pack.description
+                            if !subtitle.isEmpty {
+                                Text(subtitle)
+                                    .font(.spaceGrotesk(.regular, size: 11))
+                                    .foregroundColor(.textSecondary.opacity(0.6))
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(16)
+                }
             }
-            .padding(16)
-        }
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             appState.currentPackId = pack.id
             appState.saveSettings()
             Task { await appState.refreshPads(packId: pack.id) }
             if !pack.isDefault { selectedPack = pack }
-        }
-        .contextMenu {
-            if !pack.isDefault {
-                Button(role: .destructive) { packToDelete = pack } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
         }
     }
 

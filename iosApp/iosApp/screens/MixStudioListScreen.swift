@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MixStudioListScreen: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
     @State private var projects: [MixProjectItem] = []
     @State private var selectedProject: MixProjectItem? = nil
     @State private var projectToDelete: MixProjectItem? = nil
@@ -11,8 +12,18 @@ struct MixStudioListScreen: View {
             Color.darkBg.ignoresSafeArea()
 
             VStack(spacing: 16) {
-                ScreenHeader(title: "MIX STUDIO")
-                    .padding(.top, 8)
+                ZStack {
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                    }
+                    ScreenHeader(title: "MIX STUDIO")
+                }
+                .padding(.top, 8)
 
                 if projects.isEmpty {
                     Spacer()

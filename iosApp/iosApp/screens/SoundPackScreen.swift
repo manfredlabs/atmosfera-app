@@ -8,7 +8,7 @@ private let allModes = ["neu","maj","min"]
 struct SoundPackScreen: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
-    let pack: SoundPackItem
+    let pack: SoundPackItem?  // nil = new pack
 
     @State private var pads: [SoundPadItem] = []
     @State private var padMode = "maj"
@@ -19,15 +19,26 @@ struct SoundPackScreen: View {
     @State private var packName = ""
     @State private var packDescription = ""
     @State private var isProcessing = false
+    @State private var createdPackId: Int64? = nil
     @FocusState private var nameFieldFocused: Bool
     @FocusState private var descFieldFocused: Bool
+
+    private var isNewPack: Bool { pack == nil }
+    private var resolvedPackId: Int64? { createdPackId ?? pack?.id }
 
     private var allFilesSelected: Bool {
         !selectedNotes.isEmpty && selectedNotes.allSatisfy { noteFiles[$0] != nil }
     }
 
+    private var metadataChanged: Bool {
+        guard let pack = pack else { return true }
+        return packName.trimmingCharacters(in: .whitespaces) != pack.name ||
+               packDescription.trimmingCharacters(in: .whitespaces) != pack.description
+    }
+
     private var canSave: Bool {
-        !packName.isEmpty && (allFilesSelected || packName != pack.name || packDescription != pack.description) && !isProcessing
+        !packName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        (allFilesSelected || metadataChanged) && !isProcessing
     }
 
     var body: some View {
@@ -215,10 +226,22 @@ struct SoundPackScreen: View {
             }
         }
         .task {
-            await appState.refreshPads(packId: pack.id)
-            pads = appState.currentPads
-            packName = pack.name
-            packDescription = pack.description
+            if let pack = pack {
+                // Edit mode: load existing pack data
+                await appState.refreshPads(packId: pack.id)
+                pads = appState.currentPads
+                packName = pack.name
+                packDescription = pack.description
+            } else {
+                // New mode: auto-generate name "MySoundPack#N"
+                let allPacks = appState.allPacks
+                let maxNum = allPacks.compactMap { p -> Int? in
+                    guard p.name.hasPrefix("MySoundPack#") else { return nil }
+                    return Int(p.name.dropFirst("MySoundPack#".count))
+                }.max() ?? 0
+                packName = "MySoundPack#\(maxNum + 1)"
+                nameFieldFocused = true
+            }
         }
         .onChange(of: appState.currentPads) { _, new in pads = new }
     }
@@ -287,17 +310,32 @@ struct SoundPackScreen: View {
         guard canSave else { return }
         isProcessing = true
         Task {
-            // Update name/description
-            if packName != pack.name {
-                await appState.renameSoundPack(id: pack.id, name: packName)
+            let actualPackId: Int64
+            if let existingId = resolvedPackId, !isNewPack {
+                // Edit mode: update metadata
+                actualPackId = existingId
+                if let pack = pack {
+                    if packName.trimmingCharacters(in: .whitespaces) != pack.name {
+                        await appState.renameSoundPack(id: existingId, name: packName.trimmingCharacters(in: .whitespaces))
+                    }
+                    if packDescription.trimmingCharacters(in: .whitespaces) != pack.description {
+                        await appState.updateSoundPackDescription(id: existingId, description: packDescription.trimmingCharacters(in: .whitespaces))
+                    }
+                }
+            } else {
+                // New mode: create pack in DB
+                let newId = await appState.createSoundPack(
+                    name: packName.trimmingCharacters(in: .whitespaces),
+                    description: packDescription.trimmingCharacters(in: .whitespaces)
+                )
+                createdPackId = newId
+                actualPackId = newId
             }
-            if packDescription != pack.description {
-                await appState.updateSoundPackDescription(id: pack.id, description: packDescription)
-            }
+
             // Assign files
             if allFilesSelected {
                 for (note, url) in noteFiles {
-                    assignPad(note: note, mode: padMode, url: url)
+                    assignPad(note: note, mode: padMode, url: url, packId: actualPackId)
                 }
             }
             isProcessing = false
@@ -309,9 +347,9 @@ struct SoundPackScreen: View {
 
     // MARK: - File assignment
 
-    private func assignPad(note: String, mode: String, url: URL) {
+    private func assignPad(note: String, mode: String, url: URL, packId: Int64) {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("soundpacks/\(pack.id)")
+            .appendingPathComponent("soundpacks/\(packId)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let dest = dir.appendingPathComponent("\(note)_\(mode)_\(url.lastPathComponent)")
         if url.startAccessingSecurityScopedResource() {
@@ -321,7 +359,7 @@ struct SoundPackScreen: View {
             try? FileManager.default.copyItem(at: url, to: dest)
         }
         Task {
-            await appState.assignPad(packId: pack.id, note: note, mode: mode, filePath: dest.path)
+            await appState.assignPad(packId: packId, note: note, mode: mode, filePath: dest.path)
             pads = appState.currentPads
         }
     }

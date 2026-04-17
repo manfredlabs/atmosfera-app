@@ -93,14 +93,20 @@ struct TapTempoScreen: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            // Custom header matching Android
-            HStack {
-                Spacer()
+            // Header with back arrow
+            ZStack {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                    }
+                    Spacer()
+                }
                 Text("TAP TEMPO")
                     .font(.spaceGrotesk(.bold, size: 22))
                     .foregroundColor(.textSecondary)
                     .tracking(6)
-                Spacer()
             }
             .frame(height: 48)
 

@@ -62,13 +62,7 @@ struct SoundPackListScreen: View {
 
                 // FAB
                 Button {
-                    Task {
-                        await appState.createSoundPack(name: "New Sound Pack")
-                        packs = appState.allPacks
-                        if let newPack = packs.last(where: { !$0.isDefault }) {
-                            selectedPack = newPack
-                        }
-                    }
+                    navigateToNew = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.title2)
@@ -85,6 +79,9 @@ struct SoundPackListScreen: View {
         }
         .navigationDestination(item: $selectedPack) { pack in
             SoundPackScreen(pack: pack)
+        }
+        .navigationDestination(isPresented: $navigateToNew) {
+            SoundPackScreen(pack: nil)
         }
         .task { await appState.refreshPacks(); packs = appState.allPacks }
         .onChange(of: appState.allPacks) { _, new in packs = new }

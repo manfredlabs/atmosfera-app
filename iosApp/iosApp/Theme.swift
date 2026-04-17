@@ -239,6 +239,60 @@ struct ChannelPills: View {
     }
 }
 
+// Full-width segmented bar for Settings/Config screen (matches Android SettingsScreen)
+struct ChannelSegmentedBar: View {
+    @Binding var channel: String
+    var activeColor: Color = .ledAmber
+    var isActive: Bool = true
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(["L", "M", "R"], id: \.self) { val in
+                let isSelected: Bool = {
+                    switch channel.lowercased() {
+                    case "left": return val == "L"
+                    case "right": return val == "R"
+                    default: return val == "M"
+                    }
+                }()
+
+                Button {
+                    switch val {
+                    case "L": channel = "left"
+                    case "R": channel = "right"
+                    default: channel = "mono"
+                    }
+                } label: {
+                    Text(val)
+                        .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
+                        .foregroundColor(
+                            isSelected && isActive ? activeColor :
+                            isSelected ? .textPrimary :
+                            .textSecondary
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(
+                            isSelected && isActive ? activeColor.opacity(0.15) :
+                            isSelected ? Color.padActive :
+                            Color.padIdle
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .padding(3)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 40)
+        .background(Color.padIdle)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.padBorder.opacity(0.5), lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - SwipeRevealCard
 
 struct SwipeRevealCard<Background: View, Content: View>: View {

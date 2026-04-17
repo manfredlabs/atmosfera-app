@@ -34,8 +34,8 @@ struct SettingsScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "PAD", color: isPadActive ? .ledAmber : .textSecondary)
 
-            ChannelPills(channel: $appState.padChannel, activeColor: .ledAmber, isActive: isPadActive)
-                .onChange(of: appState.padChannel) { _, ch in
+            ChannelSegmentedBar(channel: $appState.padChannel, activeColor: .ledAmber, isActive: isPadActive)
+                .onChange(of: appState.padChannel){ _, ch in
                     let linked: String
                     switch ch {
                     case "left": linked = "right"
@@ -81,8 +81,8 @@ struct SettingsScreen: View {
         return VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "CLICK", color: isClickActive ? .clickTeal : .textSecondary)
 
-            ChannelPills(channel: $appState.clickChannel, activeColor: .clickTeal, isActive: isClickActive)
-                .onChange(of: appState.clickChannel) { _, ch in
+            ChannelSegmentedBar(channel: $appState.clickChannel, activeColor: .clickTeal, isActive: isClickActive)
+                .onChange(of: appState.clickChannel){ _, ch in
                     let linked: String
                     switch ch {
                     case "left": linked = "right"

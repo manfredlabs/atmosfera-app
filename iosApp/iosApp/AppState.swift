@@ -261,10 +261,16 @@ class AppState: ObservableObject {
 
     // MARK: - SoundPack CRUD
 
-    func createSoundPack(name: String) async {
-        do { _ = try await dbHelper.insertSoundPack(name: name, description: "", isDefault: false) }
+    @discardableResult
+    func createSoundPack(name: String, description: String = "") async -> Int64 {
+        var newId: Int64 = -1
+        do {
+            let result = try await dbHelper.insertSoundPack(name: name, description: description, isDefault: false)
+            newId = (result as? NSNumber)?.int64Value ?? -1
+        }
         catch { print("createSoundPack: \(error)") }
         await refreshPacks()
+        return newId
     }
 
     func deleteSoundPack(id: Int64) async {

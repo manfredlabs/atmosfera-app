@@ -246,27 +246,15 @@ struct PlaylistScreen: View {
     // MARK: - Lock toggle (matches Android: stop all audio on lock/unlock)
 
     private func toggleLock() {
-        if appState.playlistLocked {
-            // Currently locked → about to UNLOCK: stop everything
-            appState.liveAudio.stopPad()
-            appState.liveAudio.stopClick()
-            appState.mixAudio.stopAll()
-            appState.playingNote = nil
-            appState.playingSongId = nil
-            appState.playingMixId = nil
-            appState.clickEnabled = false
-        } else {
-            // Currently unlocked → about to LOCK: stop conditionally
-            if appState.playingNote != nil {
-                appState.liveAudio.stopPad()
-                appState.liveAudio.stopClick()
-                appState.playingNote = nil
-                appState.clickEnabled = false
-            }
-            appState.mixAudio.stopAll()
-            appState.playingMixId = nil
-            expandedCardId = nil
-        }
+        // Always stop all audio on both lock and unlock (safe approach)
+        appState.liveAudio.stopPad()
+        appState.liveAudio.stopClick()
+        appState.mixAudio.stopAll()
+        appState.playingNote = nil
+        appState.playingSongId = nil
+        appState.playingMixId = nil
+        appState.clickEnabled = false
+        if appState.playlistLocked { expandedCardId = nil }
         appState.playlistLocked.toggle()
     }
 

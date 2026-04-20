@@ -331,6 +331,7 @@ struct HomeScreen: View {
         .background(Color.darkBg)
         .presentationDetents([.height(CGFloat(appState.allPacks.count) * 54 + 60)])
         .presentationDragIndicator(.visible)
+        .presentationBackgroundInteraction(.disabled)
     }
 
     // MARK: - Tap Tempo sheet

@@ -295,6 +295,7 @@ struct AddSongScreen: View {
         .background(Color.darkBg)
         .presentationDetents([.height(CGFloat(appState.allPacks.count) * 54 + 60)])
         .presentationDragIndicator(.visible)
+        .presentationBackgroundInteraction(.disabled)
     }
 
     // MARK: - Note Grid 4×3

@@ -218,7 +218,8 @@ struct SoundPackScreen: View {
             }
         }
         .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar)
+        .onAppear { appState.showBottomBar = false }
+        .onDisappear { appState.showBottomBar = true }
         .fileImporter(isPresented: $showFilePicker,
                       allowedContentTypes: [.audio]) { result in
             if case .success(let url) = result {

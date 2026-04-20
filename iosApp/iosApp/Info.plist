@@ -24,6 +24,14 @@
     <string>AppIcon</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>UIAppFonts</key>
+    <array>
+        <string>space_grotesk_light.ttf</string>
+        <string>space_grotesk_regular.ttf</string>
+        <string>space_grotesk_medium.ttf</string>
+        <string>space_grotesk_semibold.ttf</string>
+        <string>space_grotesk_bold.ttf</string>
+    </array>
     <key>UIBackgroundModes</key>
     <array>
         <string>audio</string>

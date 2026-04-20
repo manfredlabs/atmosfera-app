@@ -110,6 +110,8 @@ class AppState: ObservableObject {
     @Published var selectedTab: Int = 1
     @Published var liveBpm: Int = 90
     @Published var tapTempoLongPress: Bool = true
+    @Published var showBottomBar: Bool = true
+    @Published var playlistLocked: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
     private let defaults = UserDefaults.standard

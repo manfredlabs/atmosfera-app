@@ -74,7 +74,8 @@ struct MixStudioListScreen: View {
             .padding(24)
         }
         .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar)
+        .onAppear { appState.showBottomBar = false }
+        .onDisappear { appState.showBottomBar = true }
         .sheet(item: $projectToDelete){ project in
             deleteSheet(project)
         }

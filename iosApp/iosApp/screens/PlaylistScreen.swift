@@ -10,7 +10,6 @@ struct PlaylistScreen: View {
     @EnvironmentObject var appState: AppState
     @State private var navigateToAdd = false
     @State private var navigateToEdit: SongItem? = nil
-    @State private var isLocked = false
     @State private var expandedCardId: String? = nil
     @State private var items: [PlaylistItem] = []
     @State private var draggingIndex: Int? = nil
@@ -31,7 +30,7 @@ struct PlaylistScreen: View {
             .frame(maxWidth: .infinity)
 
             // FAB
-            if !isLocked {
+            if !appState.playlistLocked {
                 Button { navigateToAdd = true } label: {
                     Image(systemName: "plus")
                         .font(.title2)
@@ -66,9 +65,9 @@ struct PlaylistScreen: View {
 
             HStack {
                 Spacer()
-                Button { isLocked.toggle(); if !isLocked { expandedCardId = nil } } label: {
-                    Image(systemName: isLocked ? "lock.fill" : "lock.open")
-                        .foregroundColor(isLocked ? .ledAmber : .textSecondary.opacity(0.5))
+                Button { appState.playlistLocked.toggle(); if !appState.playlistLocked { expandedCardId = nil } } label: {
+                    Image(systemName: appState.playlistLocked ? "lock.fill" : "lock.open")
+                        .foregroundColor(appState.playlistLocked ? .ledAmber : .textSecondary.opacity(0.5))
                 }
             }
         }
@@ -128,8 +127,8 @@ struct PlaylistScreen: View {
             SongCardView(
                 song: song,
                 isPlaying: appState.playingSongId == song.id,
-                isExpanded: expandedCardId == item.id && isLocked,
-                isLocked: isLocked,
+                isExpanded: expandedCardId == item.id && appState.playlistLocked,
+                isLocked: appState.playlistLocked,
                 packName: appState.allPacks.first(where: { $0.id == song.soundPackId })?.name ?? "Atmos",
                 onHeaderClick: { handleHeaderClick(item) },
                 onPlay: { playSong(song) },
@@ -142,8 +141,8 @@ struct PlaylistScreen: View {
                 project: project,
                 mixAudio: appState.mixAudio,
                 isPlaying: appState.playingMixId == project.id,
-                isExpanded: expandedCardId == item.id && isLocked,
-                isLocked: isLocked,
+                isExpanded: expandedCardId == item.id && appState.playlistLocked,
+                isLocked: appState.playlistLocked,
                 onHeaderClick: { handleHeaderClick(item) },
                 onRemove: { removeMixFromPlaylist(project) }
             )
@@ -174,7 +173,7 @@ struct PlaylistScreen: View {
         LongPressGesture(minimumDuration: 0.3)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
             .onChanged { value in
-                guard !isLocked else { return }
+                guard !appState.playlistLocked else { return }
                 switch value {
                 case .second(true, let drag):
                     if let drag = drag {
@@ -229,7 +228,7 @@ struct PlaylistScreen: View {
     }
 
     private func handleHeaderClick(_ item: PlaylistItem) {
-        guard isLocked else { return }
+        guard appState.playlistLocked else { return }
         if expandedCardId == item.id {
             expandedCardId = nil
         } else {

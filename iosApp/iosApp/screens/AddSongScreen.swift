@@ -210,7 +210,8 @@ struct AddSongScreen: View {
             }
         }
         .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar)
+        .onAppear { appState.showBottomBar = false }
+        .onDisappear { appState.showBottomBar = true }
         .sheet(isPresented: $showPackSheet){ packSheet }
     }
 

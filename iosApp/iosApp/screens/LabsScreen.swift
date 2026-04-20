@@ -200,7 +200,8 @@ struct TapTempoScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.darkBg)
         .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar)
+        .onAppear { appState.showBottomBar = false }
+        .onDisappear { appState.showBottomBar = true }
     }
 
     private func handleTap() {

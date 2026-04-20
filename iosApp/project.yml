@@ -52,11 +52,11 @@ targets:
           - audio
         NSMicrophoneUsageDescription: "Atmosfera needs microphone access for tap tempo."
         UIAppFonts:
-          - Fonts/space_grotesk_light.ttf
-          - Fonts/space_grotesk_regular.ttf
-          - Fonts/space_grotesk_medium.ttf
-          - Fonts/space_grotesk_semibold.ttf
-          - Fonts/space_grotesk_bold.ttf
+          - space_grotesk_light.ttf
+          - space_grotesk_regular.ttf
+          - space_grotesk_medium.ttf
+          - space_grotesk_semibold.ttf
+          - space_grotesk_bold.ttf
     sources:
       - path: iosApp
         excludes:

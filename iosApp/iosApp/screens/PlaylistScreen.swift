@@ -484,10 +484,10 @@ private struct SongCardView: View {
                                 .foregroundColor(.textSecondary)
                                 .frame(width: 34, alignment: .leading)
                             Slider(value: Binding(
-                                get: { Double(appState.liveAudio.padTargetVolume) },
+                                get: { Double(appState.padVolume) },
                                 set: { v in
-                                    appState.liveAudio.padTargetVolume = Float(v)
                                     appState.padVolume = Float(v)
+                                    appState.liveAudio.padTargetVolume = Float(v)
                                 }
                             ), in: 0...1)
                                 .tint(.ledAmber)
@@ -543,7 +543,7 @@ private struct SongCardView: View {
                 .stroke(isPlaying ? Color.ledAmber.opacity(0.7) : Color.padBorder.opacity(0.3), lineWidth: 1)
         )
         .animation(.easeInOut(duration: 0.2), value: isExpanded)
-        .gesture(
+        .simultaneousGesture(
             DragGesture(minimumDistance: 20)
                 .onChanged { value in
                     guard !isLocked else { return }

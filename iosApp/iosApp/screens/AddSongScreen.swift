@@ -84,93 +84,126 @@ struct AddSongScreen: View {
                             }
                     }
 
-                    // ─── Sound Pack ───
-                    VStack(alignment: .leading, spacing: 8) {
-                        SectionHeader(title: "SOUND PACK", size: 12)
-                        Button { showPackSheet = true }label: {
+                    // ─── PAD Card ───
+                    DarkSurface(borderColor: Color.ledAmber.opacity(0.25)) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "PAD", color: .ledAmber, size: 13)
+
+                            ChannelSegmentedBar(channel: $padChannel, activeColor: .ledAmber)
+
+                            // Volume
                             HStack {
-                                Text(appState.allPacks.first { $0.id == selectedPackId }?.name ?? "Atmos")
-                                    .font(.spaceGrotesk(.regular, size: 15))
-                                    .foregroundColor(.textPrimary)
-                                Spacer()
-                                Text("▼")
-                                    .font(.system(size: 11))
+                                Text("Volume")
+                                    .font(.spaceGrotesk(.regular, size: 13))
                                     .foregroundColor(.textSecondary)
+                                    .frame(width: 60, alignment: .leading)
+                                StyledSlider(
+                                    value: Binding(get: { Float(padVolume) }, set: { padVolume = Double($0) }),
+                                    thumbColor: .ledAmber,
+                                    activeTrackColor: .ledAmberDim,
+                                    inactiveTrackColor: .padBorder.opacity(0.3)
+                                )
                             }
-                            .padding(.horizontal, 16)
-                            .frame(height: 48)
-                            .background(Color.padIdle)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(0.3), lineWidth: 1))
-                        }
-                    }
 
-                    // ─── Key ───
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "KEY", size: 12)
-
-                        // NEU / MAJ / MIN pills with availability
-                        PillSelector(
-                            options: ["NEU", "MAJ", "MIN"],
-                            selected: Binding(
-                                get: { padMode.uppercased() },
-                                set: { val in
-                                    let mode = val.lowercased()
-                                    if availableModes.contains(mode) { padMode = mode }
-                                }
-                            ),
-                            disabledOptions: Set(["neu", "maj", "min"].filter { !availableModes.contains($0) }.map { $0.uppercased() })
-                        )
-
-                        // Note grid 4×3
-                        noteGrid
-                    }
-
-                    // ─── Pad Routing ───
-                    trackCard(
-                        label: "PAD",
-                        icon: "pianokeys",
-                        accentColor: .ledAmber,
-                        accentDimColor: .ledAmberDim,
-                        volume: $padVolume,
-                        channel: $padChannel
-                    )
-
-                    // ─── Click ───
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "CLICK", size: 12)
-
-                        if !clickEnabled {
-                            // Full-width OFF
-                            Button { clickEnabled = true } label: {
-                                Text("CLICK OFF  —  TAP TO ENABLE")
-                                    .font(.spaceGrotesk(.bold, size: 13))
-                                    .foregroundColor(.textSecondary.opacity(0.5))
-                                    .frame(maxWidth: .infinity, minHeight: 36)
+                            // Pack
+                            HStack {
+                                Text("Pack")
+                                    .font(.spaceGrotesk(.regular, size: 13))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 60, alignment: .leading)
+                                Button { showPackSheet = true } label: {
+                                    HStack {
+                                        Text(appState.allPacks.first { $0.id == selectedPackId }?.name ?? "Atmos")
+                                            .font(.spaceGrotesk(.regular, size: 14))
+                                            .foregroundColor(.textPrimary)
+                                        Spacer()
+                                        Text("▼")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.textSecondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .frame(height: 40)
                                     .background(Color.padIdle)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(0.3), lineWidth: 1))
+                                }
                             }
-                        } else {
-                            // Click ON + BPM controls
-                            clickRow
 
-                            // Time Signature
-                            timeSignatureGrid
-
-                            // Accent circles
-                            accentRow
-
-                            // Click routing card
-                            trackCard(
-                                label: "CLICK",
-                                icon: "metronome",
-                                accentColor: .clickTeal,
-                                accentDimColor: .clickTealDim,
-                                volume: $clickVolume,
-                                channel: $clickChannel
+                            // Mode
+                            PillSelector(
+                                options: ["NEU", "MAJ", "MIN"],
+                                selected: Binding(
+                                    get: { padMode.uppercased() },
+                                    set: { val in
+                                        let mode = val.lowercased()
+                                        if availableModes.contains(mode) { padMode = mode }
+                                    }
+                                ),
+                                disabledOptions: Set(["neu", "maj", "min"].filter { !availableModes.contains($0) }.map { $0.uppercased() })
                             )
+
+                            // Note grid
+                            noteGrid
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+
+                    // ─── CLICK Card ───
+                    DarkSurface(borderColor: (clickEnabled ? Color.clickTeal : Color.textSecondary).opacity(0.25)) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionHeader(title: "CLICK", color: clickEnabled ? .clickTeal : .textSecondary, size: 13)
+
+                            if !clickEnabled {
+                                Button { withAnimation { clickEnabled = true } } label: {
+                                    Text("CLICK OFF  —  TAP TO ENABLE")
+                                        .font(.spaceGrotesk(.bold, size: 13))
+                                        .foregroundColor(.textSecondary.opacity(0.5))
+                                        .frame(maxWidth: .infinity, minHeight: 36)
+                                        .background(Color.padIdle)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(0.3), lineWidth: 1))
+                                }
+                            } else {
+                                ChannelSegmentedBar(channel: $clickChannel, activeColor: .clickTeal)
+
+                                HStack {
+                                    Text("Volume")
+                                        .font(.spaceGrotesk(.regular, size: 13))
+                                        .foregroundColor(.textSecondary)
+                                        .frame(width: 60, alignment: .leading)
+                                    StyledSlider(
+                                        value: Binding(get: { Float(clickVolume) }, set: { clickVolume = Double($0) }),
+                                        thumbColor: .clickTeal,
+                                        activeTrackColor: .clickTealDim,
+                                        inactiveTrackColor: .padBorder.opacity(0.3)
+                                    )
+                                }
+
+                                // BPM + Signature on same line
+                                HStack(spacing: 8) {
+                                    clickRow
+                                    signatureDropdown
+                                }
+
+                                accentRow
+
+                                Spacer().frame(height: 4)
+
+                                // Toggle disable
+                                Button { withAnimation { clickEnabled = false } } label: {
+                                    Text("CLICK ON  —  TAP TO DISABLE")
+                                        .font(.spaceGrotesk(.bold, size: 13))
+                                        .foregroundColor(.clickTeal)
+                                        .frame(maxWidth: .infinity, minHeight: 36)
+                                        .background(Color.clickTeal.opacity(0.15))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clickTeal, lineWidth: 1))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                     }
 
                     Spacer(minLength: 16)
@@ -219,38 +252,40 @@ struct AddSongScreen: View {
         .sheet(isPresented: $showPackSheet){ packSheet }
     }
 
-    // MARK: - Time Signature Grid
+    // MARK: - Signature Dropdown
 
-    private var timeSignatureGrid: some View {
+    private var signatureDropdown: some View {
         let signatures = ["2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8"]
-        let rows = stride(from: 0, to: signatures.count, by: 4).map {
-            Array(signatures[$0..<min($0+4, signatures.count)])
-        }
-        return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "TIME SIGNATURE", size: 12)
-            ForEach(rows.indices, id: \.self) { rowIdx in
-                HStack(spacing: 6) {
-                    ForEach(rows[rowIdx], id: \.self) { sig in
-                        let isSelected = timeSignature == sig
-                        Button {
-                            timeSignature = sig
-                            let beats = Int(sig.split(separator: "/").first ?? "4") ?? 4
-                            accents = (0..<beats).map { $0 == 0 ? 1 : 0 }
-                        } label: {
-                            Text(sig)
-                                .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
-                                .foregroundColor(isSelected ? .clickTeal : .textSecondary.opacity(0.7))
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(isSelected ? Color.clickTeal.opacity(0.15) : Color.padIdle)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(isSelected ? Color.clickTeal.opacity(0.5) : Color.padBorder.opacity(0.3), lineWidth: 1)
-                                )
-                        }
+        return Menu {
+            ForEach(signatures, id: \.self) { sig in
+                Button {
+                    timeSignature = sig
+                    let beats = Int(sig.split(separator: "/").first ?? "4") ?? 4
+                    accents = (0..<beats).map { $0 == 0 ? 1 : 0 }
+                } label: {
+                    if timeSignature == sig {
+                        Label(sig, systemImage: "checkmark")
+                    } else {
+                        Text(sig)
                     }
                 }
             }
+        } label: {
+            HStack(spacing: 6) {
+                Text(timeSignature)
+                    .font(.spaceGrotesk(.bold, size: 14))
+                    .foregroundColor(.clickTeal)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.clickTeal.opacity(0.7))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.clickTeal.opacity(0.15))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(Color.clickTeal.opacity(0.5), lineWidth: 1)
+            )
         }
     }
 
@@ -330,70 +365,41 @@ struct AddSongScreen: View {
         }
     }
 
-    // MARK: - Click Row
+    // MARK: - BPM Row
 
     private var clickRow: some View {
-        GeometryReader { geo in
-            let colWidth = (geo.size.width - 12) / 3
-            ZStack {
-                HStack(spacing: 6) {
-                    // Col 1: CLICK ON
-                    Button { clickEnabled = false } label: {
-                        Text("CLICK ON")
-                            .font(.spaceGrotesk(.bold, size: 13))
-                            .foregroundColor(.clickTeal)
-                            .frame(width: colWidth, height: 36)
-                            .background(Color.clickTeal.opacity(0.15))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clickTeal, lineWidth: 1))
-                    }
+        HStack(spacing: 0) {
+            Button { if bpm > 30 { bpm -= 1 } } label: {
+                Text("−")
+                    .font(.spaceGrotesk(.bold, size: 20))
+                    .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
+                    .frame(width: 40, height: 36)
+                    .background(Color.padIdle)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
+            }
 
-                    // Col 2: − aligned leading
-                    HStack {
-                        Button { if bpm > 30 { bpm -= 1 } } label: {
-                            Text("−")
-                                .font(.spaceGrotesk(.bold, size: 20))
-                                .foregroundColor(bpm <= 30 ? .textSecondary.opacity(0.2) : .textSecondary)
-                                .frame(width: 44, height: 36)
-                                .background(Color.padIdle)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm <= 30 ? 0.15 : 0.3), lineWidth: 1))
-                        }
-                        Spacer()
-                    }
-                    .frame(width: colWidth)
+            HStack(alignment: .bottom, spacing: 3) {
+                Text("\(bpm)")
+                    .font(.spaceGrotesk(.bold, size: 22))
+                    .foregroundColor(.clickTeal)
+                Text("BPM")
+                    .font(.spaceGrotesk(.regular, size: 10))
+                    .foregroundColor(.clickTeal.opacity(0.5))
+                    .padding(.bottom, 2)
+            }
+            .frame(maxWidth: .infinity)
 
-                    // Col 3: + aligned trailing
-                    HStack {
-                        Spacer()
-                        Button { if bpm < 240 { bpm += 1 } } label: {
-                            Text("+")
-                                .font(.spaceGrotesk(.bold, size: 20))
-                                .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
-                                .frame(width: 44, height: 36)
-                                .background(Color.padIdle)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
-                        }
-                    }
-                    .frame(width: colWidth)
-                }
-
-                // BPM overlay centered over right 2/3
-                HStack(alignment: .bottom, spacing: 3) {
-                    Text("\(bpm)")
-                        .font(.spaceGrotesk(.bold, size: 24))
-                        .foregroundColor(.clickTeal)
-                    Text("BPM")
-                        .font(.spaceGrotesk(.regular, size: 10))
-                        .foregroundColor(.clickTeal.opacity(0.5))
-                        .padding(.bottom, 3)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.leading, colWidth + 6)
+            Button { if bpm < 240 { bpm += 1 } } label: {
+                Text("+")
+                    .font(.spaceGrotesk(.bold, size: 20))
+                    .foregroundColor(bpm >= 240 ? .textSecondary.opacity(0.2) : .textSecondary)
+                    .frame(width: 40, height: 36)
+                    .background(Color.padIdle)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.padBorder.opacity(bpm >= 240 ? 0.15 : 0.3), lineWidth: 1))
             }
         }
-        .frame(height: 36)
     }
 
     // MARK: - Accent Row
@@ -425,44 +431,6 @@ struct AddSongScreen: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Track Card (Pad / Click routing)
-
-    private func trackCard(
-        label: String, icon: String, accentColor: Color, accentDimColor: Color,
-        volume: Binding<Double>, channel: Binding<String>
-    ) -> some View {
-        DarkSurface(borderColor: accentColor.opacity(0.35)) {
-            VStack(spacing: 4) {
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(accentColor.opacity(0.15))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: icon)
-                            .font(.system(size: 20))
-                            .foregroundColor(accentColor)
-                    }
-                    Text(label)
-                        .font(.spaceGrotesk(.medium, size: 15))
-                        .foregroundColor(.textPrimary)
-                    Spacer()
-                }
-
-                HStack {
-                    StyledSlider(
-                        value: Binding(get: { Float(volume.wrappedValue) }, set: { volume.wrappedValue = Double($0) }),
-                        thumbColor: accentColor,
-                        activeTrackColor: accentDimColor,
-                        inactiveTrackColor: .padBorder.opacity(0.3)
-                    )
-                    ChannelPills(channel: channel, activeColor: accentColor)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
     }
 
     // MARK: - Data

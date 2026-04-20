@@ -55,22 +55,6 @@ struct SettingsScreen: View {
                     appState.liveAudio.padTargetVolume = v
                     appState.saveSettings()
                 }
-
-            fadeSlider(label: "Fade In", valueMs: $appState.fadeInMs,
-                      accent: isPadActive ? .ledAmber : .textSecondary,
-                      dimAccent: isPadActive ? .ledAmberDim : .padActive) { ms in
-                appState.liveAudio.fadeInMs = ms
-                appState.mixAudio.fadeInMs = ms
-                appState.saveSettings()
-            }
-
-            fadeSlider(label: "Fade Out", valueMs: $appState.fadeOutMs,
-                      accent: isPadActive ? .ledAmber : .textSecondary,
-                      dimAccent: isPadActive ? .ledAmberDim : .padActive) { ms in
-                appState.liveAudio.fadeOutMs = ms
-                appState.mixAudio.fadeOutMs = ms
-                appState.saveSettings()
-            }
         }
     }
 
@@ -100,56 +84,56 @@ struct SettingsScreen: View {
                           dimAccent: isClickActive ? .clickTealDim : .padActive)
                 .onChange(of: appState.clickVolume) { _, _ in appState.saveSettings() }
 
-            timeSignatureGrid
+            timeSignatureChips
         }
     }
 
     // MARK: - Time Signature
 
-    private var timeSignatureGrid: some View {
+    private var timeSignatureChips: some View {
         let isClickActive = appState.clickEnabled
         let signatures = ["2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8"]
-        let rows = stride(from: 0, to: signatures.count, by: 4).map {
-            Array(signatures[$0..<min($0+4, signatures.count)])
-        }
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Time Signature")
+        return HStack {
+            Text("Signature")
                 .font(.spaceGrotesk(.regular, size: 13))
                 .foregroundColor(.textSecondary)
-            ForEach(rows.indices, id: \.self) { rowIdx in
-                HStack(spacing: 6) {
-                    ForEach(rows[rowIdx], id: \.self) { sig in
-                        let isSelected = appState.timeSignature == sig
-                        Button {
-                            appState.timeSignature = sig
-                            appState.saveSettings()
-                        } label: {
+                .frame(width: 60, alignment: .leading)
+            Spacer()
+            Menu {
+                ForEach(signatures, id: \.self) { sig in
+                    Button {
+                        appState.timeSignature = sig
+                        appState.saveSettings()
+                    } label: {
+                        if appState.timeSignature == sig {
+                            Label(sig, systemImage: "checkmark")
+                        } else {
                             Text(sig)
-                                .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 14))
-                                .foregroundColor(
-                                    isSelected && isClickActive ? .clickTeal :
-                                    isSelected ? .textPrimary :
-                                    .textSecondary.opacity(0.7)
-                                )
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(
-                                    isSelected && isClickActive ? Color.clickTeal.opacity(0.15) :
-                                    isSelected ? Color.padActive :
-                                    Color.padIdle
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(
-                                            isSelected && isClickActive ? Color.clickTeal.opacity(0.5) :
-                                            isSelected ? Color.padBorder.opacity(0.8) :
-                                            Color.padBorder.opacity(0.3),
-                                            lineWidth: 1
-                                        )
-                                )
                         }
                     }
                 }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(appState.timeSignature)
+                        .font(.spaceGrotesk(.bold, size: 14))
+                        .foregroundColor(isClickActive ? .clickTeal : .textPrimary)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(isClickActive ? .clickTeal.opacity(0.7) : .textSecondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    isClickActive ? Color.clickTeal.opacity(0.15) : Color.padActive
+                )
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isClickActive ? Color.clickTeal.opacity(0.5) : Color.padBorder.opacity(0.8),
+                            lineWidth: 1
+                        )
+                )
             }
         }
     }
@@ -197,29 +181,4 @@ struct SettingsScreen: View {
         }
     }
 
-    private func fadeSlider(label: String, valueMs: Binding<Int64>, accent: Color, dimAccent: Color, onChange: @escaping (Int64) -> Void) -> some View {
-        HStack {
-            Text(label)
-                .font(.spaceGrotesk(.regular, size: 13))
-                .foregroundColor(.textSecondary)
-                .frame(width: 60, alignment: .leading)
-            StyledSlider(
-                value: Binding(
-                    get: { Float(valueMs.wrappedValue) / 5000.0 },
-                    set: {
-                        let ms = Int64(($0 * 5000 / 500).rounded() * 500)
-                        valueMs.wrappedValue = ms
-                        onChange(ms)
-                    }
-                ),
-                thumbColor: accent,
-                activeTrackColor: dimAccent,
-                inactiveTrackColor: .padBorder.opacity(0.3)
-            )
-            Text(String(format: "%.1fs", Double(valueMs.wrappedValue) / 1000))
-                .font(.spaceGrotesk(.regular, size: 11))
-                .foregroundColor(.textSecondary.opacity(0.6))
-                .frame(width: 36, alignment: .trailing)
-        }
-    }
 }

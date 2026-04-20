@@ -77,13 +77,7 @@ class MainActivity : ComponentActivity() {
         val savedClickVolume = prefs.getFloat("clickVolume", 0.5f)
         val savedPadChannel = PadChannel.entries.find { it.name == prefs.getString("padChannel", "MONO") } ?: PadChannel.MONO
         val savedClickChannel = ClickChannel.entries.find { it.name == prefs.getString("clickChannel", "MONO") } ?: ClickChannel.MONO
-        val savedFadeIn = prefs.getLong("fadeInMs", 2000L)
-        val savedFadeOut = prefs.getLong("fadeOutMs", 1500L)
         audio.padTargetVolume = savedPadVolume
-        audio.fadeInMs = savedFadeIn
-        audio.fadeOutMs = savedFadeOut
-        mixAudio.fadeInMs = savedFadeIn
-        mixAudio.fadeOutMs = savedFadeOut
 
         setContent {
             AtmosferaTheme {
@@ -153,8 +147,6 @@ class MainActivity : ComponentActivity() {
                 var clickVolume by remember { mutableFloatStateOf(savedClickVolume) }
                 var padChannel by remember { mutableStateOf(savedPadChannel) }
                 var padVolume by remember { mutableFloatStateOf(savedPadVolume) }
-                var fadeInMs by remember { mutableStateOf(savedFadeIn) }
-                var fadeOutMs by remember { mutableStateOf(savedFadeOut) }
                 var playlistLocked by remember { mutableStateOf(false) }
                 var tapTempoLongPress by remember { mutableStateOf(prefs.getBoolean("tapTempoLongPress", true)) }
                 var timeSignature by remember { mutableStateOf(prefs.getString("timeSignature", "4/4")!!) }
@@ -742,20 +734,6 @@ class MainActivity : ComponentActivity() {
                                     padChannel = linkedPad
                                     audio.updatePadPanning(linkedPad)
                                     prefs.edit().putString("clickChannel", channel.name).putString("padChannel", linkedPad.name).apply()
-                                },
-                                fadeInMs = fadeInMs,
-                                fadeOutMs = fadeOutMs,
-                                onFadeInChange = {
-                                    fadeInMs = it
-                                    audio.fadeInMs = it
-                                    mixAudio.fadeInMs = it
-                                    prefs.edit().putLong("fadeInMs", it).apply()
-                                },
-                                onFadeOutChange = {
-                                    fadeOutMs = it
-                                    audio.fadeOutMs = it
-                                    mixAudio.fadeOutMs = it
-                                    prefs.edit().putLong("fadeOutMs", it).apply()
                                 },
                                 onManagePacks = {
                                     navController.navigate("pack_selector")

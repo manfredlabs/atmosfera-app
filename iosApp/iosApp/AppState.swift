@@ -103,8 +103,6 @@ class AppState: ObservableObject {
     @Published var clickVolume: Float = 0.5
     @Published var padChannel: String = "mono"
     @Published var clickChannel: String = "mono"
-    @Published var fadeInMs: Int64 = 2000
-    @Published var fadeOutMs: Int64 = 1500
     @Published var timeSignature: String = "4/4"
     @Published var clickEnabled: Bool = false
     @Published var selectedTab: Int = 1
@@ -125,10 +123,6 @@ class AppState: ObservableObject {
         dbHelper = IosDbHelper(db: db)
         print("AppState: loading settings...")
         loadSettings()
-        liveAudio.fadeInMs = fadeInMs
-        liveAudio.fadeOutMs = fadeOutMs
-        mixAudio.fadeInMs = fadeInMs
-        mixAudio.fadeOutMs = fadeOutMs
         print("AppState: init complete")
     }
 
@@ -393,8 +387,6 @@ class AppState: ObservableObject {
         defaults.set(clickVolume, forKey: "clickVolume")
         defaults.set(padChannel, forKey: "padChannel")
         defaults.set(clickChannel, forKey: "clickChannel")
-        defaults.set(fadeInMs, forKey: "fadeInMs")
-        defaults.set(fadeOutMs, forKey: "fadeOutMs")
         defaults.set(currentPackId, forKey: "currentPackId")
         defaults.set(timeSignature, forKey: "timeSignature")
     }
@@ -404,8 +396,6 @@ class AppState: ObservableObject {
         clickVolume = defaults.float(forKey: "clickVolume").nonZeroOr(0.5)
         padChannel = defaults.string(forKey: "padChannel") ?? "mono"
         clickChannel = defaults.string(forKey: "clickChannel") ?? "mono"
-        fadeInMs = Int64(defaults.integer(forKey: "fadeInMs")).nonZeroOr(2000)
-        fadeOutMs = Int64(defaults.integer(forKey: "fadeOutMs")).nonZeroOr(1500)
         currentPackId = Int64(defaults.integer(forKey: "currentPackId").nonZeroOr(-1))
         timeSignature = defaults.string(forKey: "timeSignature") ?? "4/4"
         liveBpm = defaults.integer(forKey: "liveBpm").nonZeroOr(90)

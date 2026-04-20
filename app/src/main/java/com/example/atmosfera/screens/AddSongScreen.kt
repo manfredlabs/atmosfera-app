@@ -9,15 +9,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -497,91 +494,23 @@ fun AddSongScreen(
                     color = clickAccentColor
                 )
 
-                // CLICK toggle
-                val clickBtnHeight = 36.dp
-                AnimatedContent(
-                    targetState = clickEnabled,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "clickToggle"
-                ) { enabled ->
-                    if (!enabled) {
-                        Surface(
-                            onClick = { clickEnabled = true },
-                            shape = RoundedCornerShape(8.dp),
-                            color = PadIdle,
-                            border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-                            modifier = Modifier.fillMaxWidth().height(clickBtnHeight)
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text(
-                                    "CLICK OFF  —  TAP TO ENABLE",
-                                    fontSize = 13.sp,
-                                    fontFamily = SpaceGrotesk,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextSecondary.copy(alpha = 0.5f)
-                                )
-                            }
-                        }
-                    } else {
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    onClick = { clickEnabled = false },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = ClickTeal.copy(alpha = 0.15f),
-                                    border = BorderStroke(1.dp, ClickTeal),
-                                    modifier = Modifier.weight(1f).height(clickBtnHeight)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                        Text("CLICK ON", fontSize = 13.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = ClickTeal)
-                                    }
-                                }
-                                Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterStart) {
-                                    val atMin = bpm <= 30
-                                    Surface(
-                                        onClick = { if (!atMin) bpm = bpm - 1 },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = PadIdle,
-                                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
-                                        modifier = Modifier.width(44.dp).height(clickBtnHeight)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
-                                        }
-                                    }
-                                }
-                                Box(modifier = Modifier.weight(1f).height(clickBtnHeight), contentAlignment = Alignment.CenterEnd) {
-                                    val atMax = bpm >= 240
-                                    Surface(
-                                        onClick = { if (!atMax) bpm = bpm + 1 },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = PadIdle,
-                                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
-                                        modifier = Modifier.width(44.dp).height(clickBtnHeight)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
-                                        }
-                                    }
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(2f / 3f)
-                                    .height(clickBtnHeight)
-                                    .align(Alignment.CenterEnd),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(verticalAlignment = Alignment.Bottom) {
-                                    Text("$bpm", fontSize = 24.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = ClickTeal)
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("BPM", fontSize = 10.sp, fontFamily = SpaceGrotesk, color = ClickTeal.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 3.dp))
-                                }
-                            }
+                if (!clickEnabled) {
+                    // OFF state
+                    Surface(
+                        onClick = { clickEnabled = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = PadIdle,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "CLICK OFF  —  TAP TO ENABLE",
+                                fontSize = 13.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary.copy(alpha = 0.5f)
+                            )
                         }
                     }
                 }
@@ -592,166 +521,224 @@ fun AddSongScreen(
                     exit = shrinkVertically()
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-                        // Channel bar [L][M][R]
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp)
-                                .background(PadIdle, RoundedCornerShape(8.dp))
-                                .border(1.dp, PadBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            listOf("left" to "L", "mono" to "M", "right" to "R").forEach { (ch, label) ->
-                                val isSelected = clickChannel == ch
-                                Surface(
-                                    onClick = { clickChannel = ch },
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (isSelected) ClickTeal.copy(alpha = 0.15f) else PadIdle,
-                                    modifier = Modifier.padding(3.dp).weight(1f).fillMaxHeight()
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                        Text(label, fontSize = 14.sp, fontFamily = SpaceGrotesk,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected) ClickTeal else TextSecondary)
-                                    }
+                    // Channel bar [L][M][R]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .background(PadIdle, RoundedCornerShape(8.dp))
+                            .border(1.dp, PadBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        listOf("left" to "L", "mono" to "M", "right" to "R").forEach { (ch, label) ->
+                            val isSelected = clickChannel == ch
+                            Surface(
+                                onClick = { clickChannel = ch },
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSelected) ClickTeal.copy(alpha = 0.15f) else PadIdle,
+                                modifier = Modifier.padding(3.dp).weight(1f).fillMaxHeight()
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                    Text(label, fontSize = 14.sp, fontFamily = SpaceGrotesk,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) ClickTeal else TextSecondary)
                                 }
                             }
                         }
+                    }
 
-                        // Volume row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Volume", fontSize = 13.sp, fontFamily = SpaceGrotesk, color = TextSecondary,
-                                modifier = Modifier.width(60.dp))
-                            Slider(
-                                value = clickVolume,
-                                onValueChange = { clickVolume = it },
-                                valueRange = 0f..1f,
-                                modifier = Modifier.weight(1f).height(28.dp),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = ClickTeal,
-                                    activeTrackColor = ClickTealDim,
-                                    inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
-                                )
+                    // Volume row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Volume", fontSize = 13.sp, fontFamily = SpaceGrotesk, color = TextSecondary,
+                            modifier = Modifier.width(60.dp))
+                        Slider(
+                            value = clickVolume,
+                            onValueChange = { clickVolume = it },
+                            valueRange = 0f..1f,
+                            modifier = Modifier.weight(1f).height(28.dp),
+                            colors = SliderDefaults.colors(
+                                thumbColor = ClickTeal,
+                                activeTrackColor = ClickTealDim,
+                                inactiveTrackColor = PadBorder.copy(alpha = 0.3f)
                             )
-                        }
+                        )
+                    }
 
-                        // Time Signature selector
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                    // BPM + Signature row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // BPM controls
+                        val atMin = bpm <= 30
+                        val atMax = bpm >= 240
+                        Surface(
+                            onClick = { if (!atMin) bpm = bpm - 1 },
+                            shape = RoundedCornerShape(8.dp),
+                            color = PadIdle,
+                            border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            Text(
-                                text = "TIME SIGNATURE",
-                                fontSize = 12.sp,
-                                fontFamily = SpaceGrotesk,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp,
-                                color = TextSecondary
-                            )
-                            val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
-                            signatures.chunked(4).forEach { row ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    row.forEach { sig ->
-                                        val isSelected = timeSignature == sig
-                                        Surface(
-                                            onClick = {
-                                                timeSignature = sig
-                                                val beats = sig.substringBefore("/").toInt()
-                                                accents = List(beats) { if (it == 0) 1 else 0 }
-                                            },
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = when {
-                                                isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.15f)
-                                                isSelected -> PadActive
-                                                else -> PadIdle
-                                            },
-                                            border = BorderStroke(
-                                                1.dp,
-                                                when {
-                                                    isSelected && clickEnabled -> ClickTeal.copy(alpha = 0.5f)
-                                                    isSelected -> PadBorder.copy(alpha = 0.8f)
-                                                    else -> PadBorder.copy(alpha = 0.3f)
-                                                }
-                                            ),
-                                            modifier = Modifier.weight(1f).height(44.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                Text(
-                                                    text = sig,
-                                                    fontSize = 14.sp,
-                                                    fontFamily = SpaceGrotesk,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                    color = when {
-                                                        isSelected && clickEnabled -> ClickTeal
-                                                        isSelected -> TextPrimary
-                                                        else -> TextSecondary.copy(alpha = 0.7f)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold,
+                                    color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
                             }
                         }
 
-                        // Accent circles (numbered)
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.weight(1f),
                             horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.Bottom
                         ) {
-                            accents.forEachIndexed { index, beatState ->
-                                if (index > 0) Spacer(modifier = Modifier.width(10.dp))
-                                val isAccent = beatState == 1
-                                val isMuted = beatState == 2
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .background(
-                                            when {
-                                                isMuted -> Color.Transparent
-                                                isAccent -> ClickTeal.copy(alpha = 0.2f)
-                                                else -> Color.Transparent
-                                            },
-                                            CircleShape
-                                        )
-                                        .border(
-                                            1.dp,
-                                            when {
-                                                isMuted -> PadBorder.copy(alpha = 0.15f)
-                                                isAccent -> ClickTeal
-                                                else -> PadBorder.copy(alpha = 0.4f)
-                                            },
-                                            CircleShape
-                                        )
-                                        .clickable {
-                                            accents = accents
-                                                .toMutableList()
-                                                .also { it[index] = when (it[index]) { 1 -> 0; 0 -> 2; else -> 1 } }
-                                        },
-                                    contentAlignment = Alignment.Center
+                            Text("$bpm", fontSize = 22.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = ClickTeal)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("BPM", fontSize = 10.sp, fontFamily = SpaceGrotesk, color = ClickTeal.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(bottom = 2.dp))
+                        }
+
+                        Surface(
+                            onClick = { if (!atMax) bpm = bpm + 1 },
+                            shape = RoundedCornerShape(8.dp),
+                            color = PadIdle,
+                            border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold,
+                                    color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Signature dropdown
+                        val signatures = listOf("2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/4", "7/8")
+                        var sigExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            Surface(
+                                onClick = { sigExpanded = true },
+                                shape = CircleShape,
+                                color = ClickTeal.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, ClickTeal.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Text(
-                                        text = if (isMuted) "×" else "${index + 1}",
-                                        fontSize = 16.sp,
-                                        fontFamily = SpaceGrotesk,
-                                        fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
-                                        color = when {
-                                            isMuted -> TextSecondary.copy(alpha = 0.2f)
-                                            isAccent -> ClickTeal
-                                            else -> TextSecondary.copy(alpha = 0.4f)
+                                    Text(timeSignature, fontSize = 14.sp, fontFamily = SpaceGrotesk,
+                                        fontWeight = FontWeight.Bold, color = ClickTeal)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = ClickTeal.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = sigExpanded,
+                                onDismissRequest = { sigExpanded = false },
+                                containerColor = PadIdle
+                            ) {
+                                signatures.forEach { sig ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = sig,
+                                                fontSize = 14.sp,
+                                                fontFamily = SpaceGrotesk,
+                                                fontWeight = if (timeSignature == sig) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (timeSignature == sig) ClickTeal else TextSecondary
+                                            )
+                                        },
+                                        onClick = {
+                                            timeSignature = sig
+                                            val beats = sig.substringBefore("/").toInt()
+                                            accents = List(beats) { if (it == 0) 1 else 0 }
+                                            sigExpanded = false
                                         }
                                     )
                                 }
                             }
                         }
+                    }
+
+                    // Accent circles
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        accents.forEachIndexed { index, beatState ->
+                            if (index > 0) Spacer(modifier = Modifier.width(10.dp))
+                            val isAccent = beatState == 1
+                            val isMuted = beatState == 2
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(
+                                        when {
+                                            isMuted -> Color.Transparent
+                                            isAccent -> ClickTeal.copy(alpha = 0.2f)
+                                            else -> Color.Transparent
+                                        },
+                                        CircleShape
+                                    )
+                                    .border(
+                                        1.dp,
+                                        when {
+                                            isMuted -> PadBorder.copy(alpha = 0.15f)
+                                            isAccent -> ClickTeal
+                                            else -> PadBorder.copy(alpha = 0.4f)
+                                        },
+                                        CircleShape
+                                    )
+                                    .clickable {
+                                        accents = accents
+                                            .toMutableList()
+                                            .also { it[index] = when (it[index]) { 1 -> 0; 0 -> 2; else -> 1 } }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (isMuted) "×" else "${index + 1}",
+                                    fontSize = 16.sp,
+                                    fontFamily = SpaceGrotesk,
+                                    fontWeight = if (isAccent) FontWeight.Bold else FontWeight.Normal,
+                                    color = when {
+                                        isMuted -> TextSecondary.copy(alpha = 0.2f)
+                                        isAccent -> ClickTeal
+                                        else -> TextSecondary.copy(alpha = 0.4f)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Toggle disable
+                    Surface(
+                        onClick = { clickEnabled = false },
+                        shape = RoundedCornerShape(8.dp),
+                        color = ClickTeal.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, ClickTeal),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "CLICK ON  —  TAP TO DISABLE",
+                                fontSize = 13.sp,
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                color = ClickTeal
+                            )
+                        }
+                    }
                     } // end AnimatedVisibility Column
                 } // end AnimatedVisibility
             }

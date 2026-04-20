@@ -1257,14 +1257,44 @@ fun MixStudioEditorScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Sound Pack — compact selector
                 Text(
-                    text = "PAD TRACK",
+                    text = "SOUND PACK",
                     fontSize = 12.sp,
                     fontFamily = SpaceGrotesk,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
                     color = TextSecondary
                 )
+                val selectedPack = allPacks.find { it.id == padPackId }
+                    ?: allPacks.find { it.isDefault }
+                Surface(
+                    onClick = { showPadPackSheet = true },
+                    shape = RoundedCornerShape(10.dp),
+                    color = DarkBg,
+                    border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = selectedPack?.name ?: "Default",
+                            fontSize = 15.sp,
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 // NEU / MAJ / MIN — slide selector
                 Row(
@@ -1330,45 +1360,6 @@ fun MixStudioEditorScreen(
                                 }
                             }
                         }
-                    }
-                }
-
-                // Sound Pack — compact selector
-                Text(
-                    text = "SOUND PACK",
-                    fontSize = 12.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = TextSecondary
-                )
-                val selectedPack = allPacks.find { it.id == padPackId }
-                    ?: allPacks.find { it.isDefault }
-                Surface(
-                    onClick = { showPadPackSheet = true },
-                    shape = RoundedCornerShape(10.dp),
-                    color = DarkBg,
-                    border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = selectedPack?.name ?: "Default",
-                            fontSize = 15.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Medium,
-                            color = TextPrimary
-                        )
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
                     }
                 }
 
@@ -1531,103 +1522,99 @@ fun MixStudioEditorScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "CLICK TRACK",
-                    fontSize = 12.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = TextSecondary
-                )
-
-                // BPM
+                // BPM + Signature row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val atMin = clickBpm <= 30
+                    val atMax = clickBpm >= 240
                     Surface(
-                        onClick = { if (clickBpm > 30) clickBpm-- },
+                        onClick = { if (!atMin) clickBpm-- },
                         shape = RoundedCornerShape(8.dp),
                         color = DarkBg,
-                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-                        modifier = Modifier.size(48.dp)
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMin) 0.15f else 0.3f)),
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            Text("−", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold,
+                                color = if (atMin) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
                         }
                     }
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "$clickBpm",
-                            fontSize = 32.sp,
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            color = LabsPurple
-                        )
-                        Text(
-                            text = "BPM",
-                            fontSize = 11.sp,
-                            fontFamily = SpaceGrotesk,
-                            color = LabsPurple.copy(alpha = 0.5f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Surface(
-                        onClick = { if (clickBpm < 240) clickBpm++ },
-                        shape = RoundedCornerShape(8.dp),
-                        color = DarkBg,
-                        border = BorderStroke(1.dp, PadBorder.copy(alpha = 0.3f)),
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = TextSecondary)
-                        }
-                    }
-                }
 
-                // Time signature
-                Text(
-                    text = "TIME SIGNATURE",
-                    fontSize = 12.sp,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = TextSecondary
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TIME_SIGS.chunked(4).forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text("$clickBpm", fontSize = 22.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, color = LabsPurple)
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("BPM", fontSize = 10.sp, fontFamily = SpaceGrotesk, color = LabsPurple.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(bottom = 2.dp))
+                    }
+
+                    Surface(
+                        onClick = { if (!atMax) clickBpm++ },
+                        shape = RoundedCornerShape(8.dp),
+                        color = DarkBg,
+                        border = BorderStroke(1.dp, PadBorder.copy(alpha = if (atMax) 0.15f else 0.3f)),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text("+", fontSize = 20.sp, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold,
+                                color = if (atMax) TextSecondary.copy(alpha = 0.2f) else TextSecondary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Signature dropdown
+                    var clickSigExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        Surface(
+                            onClick = { clickSigExpanded = true },
+                            shape = CircleShape,
+                            color = LabsPurple.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, LabsPurple.copy(alpha = 0.5f))
                         ) {
-                            row.forEach { sig ->
-                                val sel = clickTimeSig == sig
-                                Surface(
-                                    onClick = {
-                                        clickTimeSig = sig
-                                        val beats = sig.substringBefore("/").toInt()
-                                        clickAccents = List(beats) { if (it == 0) 1 else 0 }
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (sel) LabsPurple.copy(alpha = 0.15f) else DarkBg,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (sel) LabsPurple else PadBorder.copy(alpha = 0.3f)
-                                    ),
-                                    modifier = Modifier.weight(1f).height(44.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(clickTimeSig, fontSize = 14.sp, fontFamily = SpaceGrotesk,
+                                    fontWeight = FontWeight.Bold, color = LabsPurple)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = LabsPurple.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = clickSigExpanded,
+                            onDismissRequest = { clickSigExpanded = false },
+                            containerColor = PadIdle
+                        ) {
+                            TIME_SIGS.forEach { sig ->
+                                DropdownMenuItem(
+                                    text = {
                                         Text(
                                             text = sig,
                                             fontSize = 14.sp,
                                             fontFamily = SpaceGrotesk,
-                                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (sel) LabsPurple else TextSecondary
+                                            fontWeight = if (clickTimeSig == sig) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (clickTimeSig == sig) LabsPurple else TextSecondary
                                         )
+                                    },
+                                    onClick = {
+                                        clickTimeSig = sig
+                                        val beats = sig.substringBefore("/").toInt()
+                                        clickAccents = List(beats) { if (it == 0) 1 else 0 }
+                                        clickSigExpanded = false
                                     }
-                                }
+                                )
                             }
                         }
                     }
@@ -1686,6 +1673,8 @@ fun MixStudioEditorScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Save button
                 Button(

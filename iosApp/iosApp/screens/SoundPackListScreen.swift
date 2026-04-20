@@ -74,6 +74,7 @@ struct SoundPackListScreen: View {
                 .padding(24)
             }
         .navigationBarHidden(true)
+        .onAppear { appState.showBottomBar = true }
         .sheet(item: $packToDelete) { pack in
             deleteSheet(pack)
         }

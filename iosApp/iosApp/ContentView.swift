@@ -18,37 +18,43 @@ struct ContentView: View {
     ]
 
     var body: some View {
-        ZStack {
-            Color.darkBg.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Content area
-                Group {
-                    switch appState.selectedTab {
-                    case 0:
-                        NavigationStack {
-                            SettingsScreen()
-                        }
-                    case 1:
-                        HomeScreen()
-                    case 2:
-                        NavigationStack {
-                            PlaylistScreen()
-                        }
-                    case 3:
-                        LabsScreen()
-                    default:
-                        HomeScreen()
-                    }
+        VStack(spacing: 0) {
+            // Content area — all tabs stay alive for performance
+            ZStack {
+                NavigationStack {
+                    SettingsScreen()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .zIndex(appState.selectedTab == 0 ? 1 : 0)
+                .opacity(appState.selectedTab == 0 ? 1 : 0)
+                .allowsHitTesting(appState.selectedTab == 0)
 
-                // Custom bottom bar (matches Android Material3 NavigationBar)
-                if appState.showBottomBar {
-                    customTabBar
+                HomeScreen()
+                    .zIndex(appState.selectedTab == 1 ? 1 : 0)
+                    .opacity(appState.selectedTab == 1 ? 1 : 0)
+                    .allowsHitTesting(appState.selectedTab == 1)
+
+                NavigationStack {
+                    PlaylistScreen()
                 }
+                .zIndex(appState.selectedTab == 2 ? 1 : 0)
+                .opacity(appState.selectedTab == 2 ? 1 : 0)
+                .allowsHitTesting(appState.selectedTab == 2)
+
+                LabsScreen()
+                    .zIndex(appState.selectedTab == 3 ? 1 : 0)
+                    .opacity(appState.selectedTab == 3 ? 1 : 0)
+                    .allowsHitTesting(appState.selectedTab == 3)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.easeInOut(duration: 0.25), value: appState.selectedTab)
 
+            // Custom bottom bar (matches Android Material3 NavigationBar)
+            if appState.showBottomBar {
+                customTabBar
+            }
+        }
+        .background(Color.darkBg.ignoresSafeArea())
+        .overlay {
             if let err = loadError {
                 Color.black.opacity(0.8).ignoresSafeArea()
                 VStack {
@@ -60,7 +66,9 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .onChange(of: appState.playlistLocked) { _, locked in
-            if locked { appState.selectedTab = 2 }
+            if locked {
+                appState.selectedTab = 2
+            }
         }
         .task {
             do {
@@ -80,45 +88,41 @@ struct ContentView: View {
     }
 
     private var customTabBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                ForEach(visibleTabs, id: \.tag) { tab in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            appState.selectedTab = tab.tag
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            ZStack {
-                                // Indicator pill (PadActive) behind selected icon
-                                if appState.selectedTab == tab.tag {
-                                    Capsule()
-                                        .fill(Color.padActive)
-                                        .frame(width: 56, height: 28)
-                                }
-
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 20))
-                            }
-                            .frame(height: 28)
-
-                            Text(tab.label)
-                                .font(.spaceGrotesk(.medium, size: 11))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(
-                            appState.selectedTab == tab.tag
-                                ? .textPrimary
-                                : .textSecondary.opacity(0.5)
-                        )
+        HStack(spacing: 0) {
+            ForEach(visibleTabs, id: \.tag) { tab in
+                Button {
+                    if appState.selectedTab != tab.tag {
+                        appState.selectedTab = tab.tag
                     }
-                    .buttonStyle(.plain)
+                } label: {
+                    VStack(spacing: 4) {
+                        ZStack {
+                            if appState.selectedTab == tab.tag {
+                                Capsule()
+                                    .fill(Color.padActive)
+                                    .frame(width: 56, height: 28)
+                            }
+
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 22))
+                        }
+                        .frame(height: 28)
+
+                        Text(tab.label)
+                            .font(.spaceGrotesk(.medium, size: 11))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(
+                        appState.selectedTab == tab.tag
+                            ? .textPrimary
+                            : .textSecondary.opacity(0.5)
+                    )
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.top, 10)
-            .padding(.bottom, 6)
-            .background(Color.padIdle)
         }
+        .padding(.top, 10)
+        .padding(.bottom, 8)
         .padding(.bottom, safeAreaBottom)
         .background(Color.padIdle)
     }

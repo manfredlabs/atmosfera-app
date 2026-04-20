@@ -136,7 +136,6 @@ struct MixStudioEditorScreen: View {
         }
         .navigationBarHidden(true)
         .onAppear { appState.showBottomBar = false }
-        .onDisappear { appState.showBottomBar = true }
         .confirmationDialog("Add Track",isPresented: $showAddTrack) {
             Button("Pad Track") { addPadTrack() }
             Button("Click Track") { addClickTrack() }

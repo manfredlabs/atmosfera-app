@@ -75,7 +75,6 @@ struct MixStudioListScreen: View {
         }
         .navigationBarHidden(true)
         .onAppear { appState.showBottomBar = false }
-        .onDisappear { appState.showBottomBar = true }
         .sheet(item: $projectToDelete){ project in
             deleteSheet(project)
         }

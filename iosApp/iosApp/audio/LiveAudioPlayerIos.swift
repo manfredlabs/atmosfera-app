@@ -46,8 +46,8 @@ class LiveAudioPlayerIos: ObservableObject {
     // MARK: - Pad
 
     func startPad(resName: String, padChannel: String) {
-        guard let url = Bundle.main.url(forResource: resName, withExtension: "caf") else {
-            print("LiveAudioPlayerIos: missing resource \(resName).caf")
+        guard let url = Bundle.main.url(forResource: resName, withExtension: "m4a") else {
+            print("LiveAudioPlayerIos: missing resource \(resName).m4a")
             return
         }
         startPadFromFile(filePath: url.path, padChannel: padChannel)
@@ -178,13 +178,13 @@ class LiveAudioPlayerIos: ObservableObject {
 
         // Load click sounds lazily
         if clickPlayer == nil {
-            if let url = Bundle.main.url(forResource: "click", withExtension: "caf") {
+            if let url = Bundle.main.url(forResource: "click", withExtension: "m4a") {
                 clickPlayer = try? AVAudioPlayer(contentsOf: url)
                 clickPlayer?.prepareToPlay()
             }
         }
         if accentPlayer == nil {
-            if let url = Bundle.main.url(forResource: "click_accent", withExtension: "caf") {
+            if let url = Bundle.main.url(forResource: "click_accent", withExtension: "m4a") {
                 accentPlayer = try? AVAudioPlayer(contentsOf: url)
                 accentPlayer?.prepareToPlay()
             }

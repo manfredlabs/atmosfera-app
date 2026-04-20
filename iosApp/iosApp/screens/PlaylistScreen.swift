@@ -44,6 +44,7 @@ struct PlaylistScreen: View {
         }
         .background(Color.darkBg)
         .navigationBarHidden(true)
+        .onAppear { appState.showBottomBar = true }
         .navigationDestination(isPresented: $navigateToAdd) {
             AddSongScreen(existingSong: nil)
                 .onDisappear { refreshItems() }

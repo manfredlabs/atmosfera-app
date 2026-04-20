@@ -42,11 +42,11 @@ class MixAudioPlayerIos: ObservableObject {
     }
 
     private func loadClickSounds() {
-        if let url = Bundle.main.url(forResource: "click", withExtension: "caf") {
+        if let url = Bundle.main.url(forResource: "click", withExtension: "m4a") {
             clickPlayer = try? AVAudioPlayer(contentsOf: url)
             clickPlayer?.prepareToPlay()
         }
-        if let url = Bundle.main.url(forResource: "click_accent", withExtension: "caf") {
+        if let url = Bundle.main.url(forResource: "click_accent", withExtension: "m4a") {
             accentPlayer = try? AVAudioPlayer(contentsOf: url)
             accentPlayer?.prepareToPlay()
         }
@@ -190,7 +190,7 @@ class MixAudioPlayerIos: ObservableObject {
             let mode = track.padMode ?? "maj"
             resName = "pad_\(note)_\(mode)"
         }
-        guard let url = Bundle.main.url(forResource: resName, withExtension: "caf"),
+        guard let url = Bundle.main.url(forResource: resName, withExtension: "m4a"),
               let file = try? AVAudioFile(forReading: url) else { return }
         startPadWithFile(track: track, file: file)
         padTrackIds.insert(track.id)

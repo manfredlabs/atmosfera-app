@@ -199,9 +199,11 @@ struct AddSongScreen: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
             }
         }
         .onAppear {
+            appState.showBottomBar = false
             populateFromExisting()
             if !isEditMode {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -210,8 +212,6 @@ struct AddSongScreen: View {
             }
         }
         .navigationBarHidden(true)
-        .onAppear { appState.showBottomBar = false }
-        .onDisappear { appState.showBottomBar = true }
         .sheet(isPresented: $showPackSheet){ packSheet }
     }
 

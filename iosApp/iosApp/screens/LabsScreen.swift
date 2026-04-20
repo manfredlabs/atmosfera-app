@@ -34,6 +34,7 @@ struct LabsScreen: View {
             .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .background(Color.darkBg)
+            .onAppear { appState.showBottomBar = true }
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $navigateToTapTempo) {
                 TapTempoScreen()
@@ -201,7 +202,6 @@ struct TapTempoScreen: View {
         .background(Color.darkBg)
         .navigationBarHidden(true)
         .onAppear { appState.showBottomBar = false }
-        .onDisappear { appState.showBottomBar = true }
     }
 
     private func handleTap() {

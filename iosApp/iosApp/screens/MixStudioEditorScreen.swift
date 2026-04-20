@@ -66,7 +66,7 @@ struct MixStudioEditorScreen: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        VStack(spacing: 8) {
+                        LazyVStack(spacing: 8) {
                             ForEach(tracks) { track in
                                 TrackRowView(
                                     track: track,

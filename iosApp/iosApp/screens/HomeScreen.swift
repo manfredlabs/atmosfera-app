@@ -68,7 +68,12 @@ struct HomeScreen: View {
                     let isSelected = padMode == mode
                     Button {
                         padMode = mode
-                        if isPlaying { restartPad() }
+                        if isPlaying {
+                            appState.liveAudio.stopPad()
+                            appState.playingNote = nil
+                            isPlaying = false
+                            appState.playingSongId = nil
+                        }
                     } label: {
                         Text(mode.uppercased())
                             .font(.spaceGrotesk(isSelected ? .bold : .regular, size: 13))
@@ -134,7 +139,12 @@ struct HomeScreen: View {
                         .opacity(padAvailable ? 1 : 0.3)
                         .simultaneousGesture(
                             LongPressGesture().onEnded { _ in
-                                // Long press on pad → could open song config
+                                appState.liveAudio.stopPad()
+                                appState.liveAudio.stopClick()
+                                appState.playingNote = nil
+                                appState.playingSongId = nil
+                                appState.clickEnabled = false
+                                isPlaying = false
                             }
                         )
                         .animation(.easeInOut(duration: 0.2), value: isActive)
@@ -284,9 +294,13 @@ struct HomeScreen: View {
             ForEach(appState.allPacks, id: \.id) { pack in
                 let isSelected = pack.id == appState.currentPackId
                 Button {
-                    appState.currentPackId = pack.id
-                    Task { await appState.refreshPads(packId: pack.id) }
-                    if isPlaying { restartPad() }
+                    if appState.currentPackId != pack.id {
+                        appState.liveAudio.stopPad()
+                        appState.playingNote = nil
+                        isPlaying = false
+                        appState.currentPackId = pack.id
+                        Task { await appState.refreshPads(packId: pack.id) }
+                    }
                     showPackSheet = false
                 } label: {
                     HStack {

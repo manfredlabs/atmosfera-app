@@ -41,7 +41,7 @@ struct MixStudioListScreen: View {
                     Spacer()
                 } else {
                     ScrollView {
-                        VStack(spacing: 10) {
+                        LazyVStack(spacing: 10) {
                             ForEach(projects) { project in
                                 projectCard(project)
                             }

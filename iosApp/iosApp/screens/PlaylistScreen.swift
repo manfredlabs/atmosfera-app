@@ -66,7 +66,7 @@ struct PlaylistScreen: View {
 
             HStack {
                 Spacer()
-                Button { appState.playlistLocked.toggle(); if !appState.playlistLocked { expandedCardId = nil } } label: {
+                Button { toggleLock() } label: {
                     Image(systemName: appState.playlistLocked ? "lock.fill" : "lock.open")
                         .foregroundColor(appState.playlistLocked ? .ledAmber : .textSecondary.opacity(0.5))
                 }
@@ -243,19 +243,52 @@ struct PlaylistScreen: View {
         }
     }
 
+    // MARK: - Lock toggle (matches Android: stop all audio on lock/unlock)
+
+    private func toggleLock() {
+        if appState.playlistLocked {
+            // Currently locked → about to UNLOCK: stop everything
+            appState.liveAudio.stopPad()
+            appState.liveAudio.stopClick()
+            appState.mixAudio.stopAll()
+            appState.playingNote = nil
+            appState.playingSongId = nil
+            appState.playingMixId = nil
+            appState.clickEnabled = false
+        } else {
+            // Currently unlocked → about to LOCK: stop conditionally
+            if appState.playingNote != nil {
+                appState.liveAudio.stopPad()
+                appState.liveAudio.stopClick()
+                appState.playingNote = nil
+                appState.clickEnabled = false
+            }
+            appState.mixAudio.stopAll()
+            appState.playingMixId = nil
+            expandedCardId = nil
+        }
+        appState.playlistLocked.toggle()
+    }
+
     private func playSong(_ song: SongItem) {
+        // Stop mix if playing (matches Android)
+        appState.mixAudio.stopAll()
+        appState.playingMixId = nil
+        appState.liveAudio.stopClick()
+
         let isDefaultPack = appState.allPacks.first(where: { $0.id == song.soundPackId })?.isDefault ?? true
-        let resName: String
         if !isDefaultPack, let pad = appState.currentPads.first(where: { $0.note == song.note && $0.mode == song.padMode }) {
             appState.liveAudio.padTargetVolume = song.padVolume
             appState.liveAudio.startPadFromFile(filePath: pad.filePath, padChannel: song.padChannel)
         } else {
-            resName = "pad_\(song.note)_\(song.padMode)"
+            let resName = "pad_\(song.note)_\(song.padMode)"
             appState.liveAudio.padTargetVolume = song.padVolume
             appState.liveAudio.startPad(resName: resName, padChannel: song.padChannel)
         }
         if song.clickEnabled {
             appState.liveAudio.startClick(bpm: song.bpm, channel: song.clickChannel, volume: song.clickVolume, accents: song.accentList)
+        } else {
+            appState.clickEnabled = false
         }
         appState.playingSongId = song.id
         appState.playingNote = song.note
@@ -638,6 +671,13 @@ private struct MixCardView: View {
                                 if mixAudio.isPaused {
                                     mixAudio.resumeAll(tracks)
                                 } else if !anyPlaying {
+                                    // Stop song/click before playing mix (matches Android)
+                                    appState.liveAudio.stopPad()
+                                    appState.liveAudio.stopClick()
+                                    appState.playingNote = nil
+                                    appState.playingSongId = nil
+                                    appState.clickEnabled = false
+                                    mixAudio.stopAll()
                                     mixAudio.startAll(tracks)
                                     appState.playingMixId = project.id
                                 }

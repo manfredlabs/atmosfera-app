@@ -54,6 +54,13 @@ workflows:
         - pattern: main
           include: true
     scripts:
+      - name: Auto-increment version
+        script: |
+          # Use Codemagic build number as patch: 1.2.BUILD_NUMBER
+          MAJOR_MINOR="1.2"
+          NEW_VERSION="${MAJOR_MINOR}.${BUILD_NUMBER}"
+          echo "Setting MARKETING_VERSION to $NEW_VERSION"
+          sed -i '' "s/MARKETING_VERSION: \".*\"/MARKETING_VERSION: \"$NEW_VERSION\"/" iosApp/project.yml
       - name: Build KMP shared framework
         script: |
           chmod +x gradlew

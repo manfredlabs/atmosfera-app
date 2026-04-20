@@ -286,6 +286,7 @@ struct PlaylistScreen: View {
             appState.liveAudio.startPad(resName: resName, padChannel: song.padChannel)
         }
         if song.clickEnabled {
+            appState.clickEnabled = true
             appState.liveAudio.startClick(bpm: song.bpm, channel: song.clickChannel, volume: song.clickVolume, accents: song.accentList)
         } else {
             appState.clickEnabled = false
@@ -463,39 +464,69 @@ private struct SongCardView: View {
                             }
                         }
 
-                        // PAD volume
+                        // PAD volume + mute toggle
                         HStack(spacing: 6) {
-                            Image(systemName: "pianokeys")
-                                .font(.system(size: 14))
-                                .foregroundColor(.ledAmber)
-                                .frame(width: 16)
+                            Button {
+                                if appState.playingNote != nil {
+                                    appState.liveAudio.stopPad()
+                                    appState.playingNote = nil
+                                } else if appState.playingSongId != nil {
+                                    onPlay()
+                                }
+                            } label: {
+                                Image(systemName: "pianokeys")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(appState.playingNote != nil ? .ledAmber : .ledAmber.opacity(0.3))
+                                    .frame(width: 16)
+                            }
                             Text("PAD")
                                 .font(.spaceGrotesk(.regular, size: 11))
                                 .foregroundColor(.textSecondary)
                                 .frame(width: 34, alignment: .leading)
-                            Slider(value: $appState.padVolume, in: 0...1)
-                                .tint(.ledAmber)
-                                .onChange(of: appState.padVolume) { _, v in
-                                    appState.liveAudio.padTargetVolume = v
+                            Slider(value: Binding(
+                                get: { Double(appState.liveAudio.padTargetVolume) },
+                                set: { v in
+                                    appState.liveAudio.padTargetVolume = Float(v)
+                                    appState.padVolume = Float(v)
                                 }
+                            ), in: 0...1)
+                                .tint(.ledAmber)
                         }
 
-                        // CLICK volume
+                        // CLICK volume + mute toggle
                         if song.clickEnabled {
                             HStack(spacing: 6) {
-                                Image(systemName: "metronome")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.clickTeal)
-                                    .frame(width: 16)
+                                Button {
+                                    if appState.clickEnabled {
+                                        appState.liveAudio.stopClick()
+                                        appState.clickEnabled = false
+                                    } else if appState.playingSongId != nil {
+                                        appState.liveAudio.startClick(
+                                            bpm: song.bpm,
+                                            channel: song.clickChannel,
+                                            volume: song.clickVolume,
+                                            accents: song.accentList
+                                        )
+                                        appState.clickEnabled = true
+                                    }
+                                } label: {
+                                    Image(systemName: "metronome")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(appState.clickEnabled ? .clickTeal : .clickTeal.opacity(0.3))
+                                        .frame(width: 16)
+                                }
                                 Text("CLICK")
                                     .font(.spaceGrotesk(.regular, size: 11))
                                     .foregroundColor(.textSecondary)
                                     .frame(width: 34, alignment: .leading)
-                                Slider(value: $appState.clickVolume, in: 0...1)
-                                    .tint(.clickTeal)
-                                    .onChange(of: appState.clickVolume) { _, _ in
-                                        appState.saveSettings()
+                                Slider(value: Binding(
+                                    get: { Double(appState.clickVolume) },
+                                    set: { v in
+                                        appState.clickVolume = Float(v)
+                                        appState.liveAudio.currentClickVolume = Float(v)
                                     }
+                                ), in: 0...1)
+                                    .tint(.clickTeal)
                             }
                         }
                     }

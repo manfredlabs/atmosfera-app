@@ -46,17 +46,21 @@ struct AddSongScreen: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Header
-                    HStack(spacing: 8) {
-                        Button { dismiss() } label: {
-                            Image(systemName: "chevron.left")
-                                .foregroundColor(.textSecondary)
+                    ZStack {
+                        HStack {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            Spacer()
                         }
                         Text(isEditMode ? "EDIT SONG" : "NEW SONG")
                             .font(.spaceGrotesk(.light, size: 22))
                             .foregroundColor(.textPrimary)
                             .tracking(2)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 8)
 
                     // ─── Name ───

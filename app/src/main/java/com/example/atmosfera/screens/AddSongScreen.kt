@@ -86,7 +86,7 @@ fun AddSongScreen(
         }
         mutableStateOf(sig)
     }
-    var clickEnabled by remember { mutableStateOf(liveClickEnabled) }
+    var clickEnabled by remember { mutableStateOf(if (editSongId != null) liveClickEnabled else false) }
     var padVolume by remember { mutableFloatStateOf(livePadVolume) }
     var padChannel by remember { mutableStateOf(livePadChannel) }
     var clickVolume by remember { mutableFloatStateOf(liveClickVolume) }

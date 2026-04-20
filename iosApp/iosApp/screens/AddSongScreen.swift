@@ -17,7 +17,7 @@ struct AddSongScreen: View {
     @State private var bpm = 90
     @State private var accents = [1,0,0,0]
     @State private var padEnabled = true
-    @State private var clickEnabled = true
+    @State private var clickEnabled = false
     @State private var padVolume: Double = 0.5
     @State private var clickVolume: Double = 0.5
     @State private var padChannel = "mono"
